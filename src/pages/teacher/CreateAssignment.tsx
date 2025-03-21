@@ -1,6 +1,6 @@
 
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,13 +10,14 @@ import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
-import { mockCourses } from '@/services/mockData';
+import { mockCourses, addAssignment } from '@/services/mockData';
 import { format } from 'date-fns';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import FileUploader from '@/components/FileUploader';
 
 const TeacherCreateAssignment = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   
   const [title, setTitle] = useState('');
@@ -25,6 +26,15 @@ const TeacherCreateAssignment = () => {
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [totalMarks, setTotalMarks] = useState('100');
   const [file, setFile] = useState<File | null>(null);
+  
+  // Check if course ID is in the URL query params
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const courseParam = params.get('course');
+    if (courseParam) {
+      setCourseId(courseParam);
+    }
+  }, [location.search]);
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,14 +49,13 @@ const TeacherCreateAssignment = () => {
       return;
     }
     
-    // Here you would normally send data to your backend
-    console.log({
+    // Add assignment to mock data
+    const newAssignment = addAssignment({
+      courseId,
       title,
       description,
-      courseId,
       dueDate,
       totalMarks: parseInt(totalMarks),
-      file,
     });
     
     // Show success message

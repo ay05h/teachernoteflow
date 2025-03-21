@@ -1,10 +1,10 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { toast } from '@/hooks/use-toast';
+import { addCourse } from '@/services/mockData';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -40,8 +40,12 @@ const TeacherCreateCourse = () => {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Add the course to our mock data
+      const newCourse = addCourse({
+        title: values.title,
+        code: values.code,
+        description: values.description,
+      });
       
       toast({
         title: "Course created",

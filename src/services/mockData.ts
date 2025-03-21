@@ -2,7 +2,7 @@
 import { Assignment, Course, Submission } from '../types';
 
 // Mock data for courses
-export const mockCourses: Course[] = [
+export let mockCourses: Course[] = [
   {
     id: 'c1',
     teacherId: 'teacher1',
@@ -30,7 +30,7 @@ export const mockCourses: Course[] = [
 ];
 
 // Mock data for assignments
-export const mockAssignments: Assignment[] = [
+export let mockAssignments: Assignment[] = [
   {
     id: 'a1',
     courseId: 'c1',
@@ -61,7 +61,7 @@ export const mockAssignments: Assignment[] = [
 ];
 
 // Mock data for submissions
-export const mockSubmissions: Submission[] = [
+export let mockSubmissions: Submission[] = [
   {
     id: 's1',
     assignmentId: 'a1',
@@ -105,6 +105,43 @@ export const mockSubmissions: Submission[] = [
     plagiarismScore: 12,
   },
 ];
+
+// Function to add a new course
+export const addCourse = (course: Omit<Course, "id" | "teacherId" | "createdAt">): Course => {
+  const newCourse: Course = {
+    ...course,
+    id: `c${mockCourses.length + 1}`,
+    teacherId: 'teacher1', // Assuming the logged-in teacher has this ID
+    createdAt: new Date()
+  };
+  
+  mockCourses = [...mockCourses, newCourse];
+  return newCourse;
+};
+
+// Function to add a new assignment
+export const addAssignment = (assignment: Omit<Assignment, "id" | "createdAt">): Assignment => {
+  const newAssignment: Assignment = {
+    ...assignment,
+    id: `a${mockAssignments.length + 1}`,
+    createdAt: new Date()
+  };
+  
+  mockAssignments = [...mockAssignments, newAssignment];
+  return newAssignment;
+};
+
+// Function to add a new submission
+export const addSubmission = (submission: Omit<Submission, "id" | "submittedAt">): Submission => {
+  const newSubmission: Submission = {
+    ...submission,
+    id: `s${mockSubmissions.length + 1}`,
+    submittedAt: new Date()
+  };
+  
+  mockSubmissions = [...mockSubmissions, newSubmission];
+  return newSubmission;
+};
 
 // Simple function to generate random plagiarism score
 export const generatePlagiarismScore = (): number => {
