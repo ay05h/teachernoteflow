@@ -49,3 +49,12 @@ export interface Notification {
   isRead: boolean;
   createdAt: Date;
 }
+
+// Badge variants
+export type BadgeVariant = 
+  | "default" 
+  | "secondary" 
+  | "destructive" 
+  | "outline" 
+  | "success"  // Added for submitted assignments
+  | "warning"; // Added for due soon assignments
