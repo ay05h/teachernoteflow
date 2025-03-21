@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
@@ -42,10 +41,7 @@ const TeacherAssignmentSubmissions = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Find the assignment
   const assignment = mockAssignments.find(a => a.id === assignmentId);
-  
-  // Get submissions for this assignment
   const submissions = mockSubmissions.filter(s => s.assignmentId === assignmentId);
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,7 +49,6 @@ const TeacherAssignmentSubmissions = () => {
   const [marks, setMarks] = useState<string>('');
   const [feedback, setFeedback] = useState<string>('');
   
-  // Filter submissions based on search term
   const filteredSubmissions = submissions.filter(submission => 
     submission.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     submission.rollNumber.toLowerCase().includes(searchTerm.toLowerCase())
@@ -75,7 +70,6 @@ const TeacherAssignmentSubmissions = () => {
   };
   
   const handleSaveGrading = () => {
-    // Here you would normally update the submission on your backend
     console.log({
       submissionId: selectedSubmission,
       marks: parseInt(marks),
@@ -90,12 +84,10 @@ const TeacherAssignmentSubmissions = () => {
     handleCloseDialog();
   };
   
-  // Calculate statistics for the chart
   const totalSubmissions = submissions.length;
   const gradedSubmissions = submissions.filter(s => s.marks !== undefined).length;
   const highPlagiarism = submissions.filter(s => (s.plagiarismScore || 0) > 50).length;
 
-  // Group plagiarism scores for chart
   const plagiarismRanges = {
     '0-20%': submissions.filter(s => (s.plagiarismScore || 0) <= 20).length,
     '21-40%': submissions.filter(s => (s.plagiarismScore || 0) > 20 && (s.plagiarismScore || 0) <= 40).length,
@@ -177,8 +169,7 @@ const TeacherAssignmentSubmissions = () => {
                 { name: '61-80%', value: plagiarismRanges['61-80%'] },
                 { name: '81-100%', value: plagiarismRanges['81-100%'] },
               ]} 
-              xKey="name" 
-              yKey="value" 
+              type="bar"
               title="Plagiarism Distribution" 
             />
           </div>

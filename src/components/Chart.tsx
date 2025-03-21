@@ -3,12 +3,7 @@ import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 // Types
-interface BarChartData {
-  name: string;
-  value: number;
-}
-
-interface PieChartData {
+interface ChartData {
   name: string;
   value: number;
 }
@@ -16,8 +11,8 @@ interface PieChartData {
 type ChartType = 'bar' | 'pie';
 
 interface ChartProps {
-  data: BarChartData[] | PieChartData[];
-  type: ChartType;
+  data: ChartData[];
+  type?: ChartType;
   title?: string;
   height?: number;
   colors?: string[];
@@ -25,7 +20,7 @@ interface ChartProps {
 
 const Chart = ({
   data,
-  type,
+  type = 'bar',
   title,
   height = 300,
   colors = ['#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', '#ec4899'],
