@@ -46,16 +46,21 @@ export const addAssignment = (assignment: Omit<Assignment, "id" | "createdAt">):
 
 // Function to add a new submission
 export const addSubmission = (submission: Omit<Submission, "id" | "submittedAt">): Submission => {
-  const newSubmission: Submission = {
-    ...submission,
-    id: `s${Date.now()}`, // Generate unique ID using timestamp
-    submittedAt: new Date(),
-    plagiarismScore: generatePlagiarismScore()
-  };
-  
-  mockSubmissions = [...mockSubmissions, newSubmission];
-  storeData('submissions', mockSubmissions);
-  return newSubmission;
+  try {
+    const newSubmission: Submission = {
+      ...submission,
+      id: `s${Date.now()}`, // Generate unique ID using timestamp
+      submittedAt: new Date(),
+      plagiarismScore: generatePlagiarismScore()
+    };
+    
+    mockSubmissions = [...mockSubmissions, newSubmission];
+    storeData('submissions', mockSubmissions);
+    return newSubmission;
+  } catch (error) {
+    console.error("Error adding submission:", error);
+    throw error;
+  }
 };
 
 // Function to get submissions for an assignment

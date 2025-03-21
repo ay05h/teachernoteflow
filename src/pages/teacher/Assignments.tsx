@@ -8,15 +8,21 @@ import { Input } from '@/components/ui/input';
 import { mockAssignments, mockCourses } from '@/services/mockData';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import { useAuth } from '@/contexts/AuthContext';
 
 const TeacherAssignments = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [assignments, setAssignments] = useState(mockAssignments);
+  const { user } = useAuth();
   
-  // Refresh assignments when component mounts
+  // Refresh assignments when component mounts or when mockAssignments changes
   useEffect(() => {
-    setAssignments(mockAssignments);
-  }, []);
+    try {
+      setAssignments(mockAssignments);
+    } catch (error) {
+      console.error("Error setting assignments:", error);
+    }
+  }, [mockAssignments]);
   
   // Filter assignments based on search term
   const filteredAssignments = assignments.filter(assignment => 
@@ -26,8 +32,13 @@ const TeacherAssignments = () => {
   
   // Get course name by ID
   const getCourseTitle = (courseId: string) => {
-    const course = mockCourses.find(c => c.id === courseId);
-    return course ? course.title : 'Unknown Course';
+    try {
+      const course = mockCourses.find(c => c.id === courseId);
+      return course ? course.title : 'Unknown Course';
+    } catch (error) {
+      console.error("Error getting course title:", error);
+      return 'Unknown Course';
+    }
   };
 
   return (
