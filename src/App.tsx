@@ -8,29 +8,61 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
+import TeacherDashboard from "./pages/teacher/Dashboard";
+import TeacherCourses from "./pages/teacher/Courses";
+import TeacherAssignments from "./pages/teacher/Assignments";
+import TeacherCreateCourse from "./pages/teacher/CreateCourse";
+import TeacherCreateAssignment from "./pages/teacher/CreateAssignment";
+import TeacherAssignmentSubmissions from "./pages/teacher/AssignmentSubmissions";
+import StudentDashboard from "./pages/student/Dashboard";
+import StudentCourses from "./pages/student/Courses";
+import StudentAssignments from "./pages/student/Assignments";
+import StudentAssignmentDetail from "./pages/student/AssignmentDetail";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
+import ProtectedRoute from "./components/ProtectedRoute";
+import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          {/* These routes will be implemented in future iterations */}
-          <Route path="/about" element={<Index />} />
-          <Route path="/contact" element={<Index />} />
-          <Route path="/teacher/dashboard" element={<Index />} />
-          <Route path="/student/dashboard" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            
+            {/* Teacher Routes */}
+            <Route path="/teacher" element={<ProtectedRoute userType="teacher" />}>
+              <Route path="dashboard" element={<TeacherDashboard />} />
+              <Route path="courses" element={<TeacherCourses />} />
+              <Route path="courses/create" element={<TeacherCreateCourse />} />
+              <Route path="assignments" element={<TeacherAssignments />} />
+              <Route path="assignments/create" element={<TeacherCreateAssignment />} />
+              <Route path="assignments/:assignmentId/submissions" element={<TeacherAssignmentSubmissions />} />
+            </Route>
+            
+            {/* Student Routes */}
+            <Route path="/student" element={<ProtectedRoute userType="student" />}>
+              <Route path="dashboard" element={<StudentDashboard />} />
+              <Route path="courses" element={<StudentCourses />} />
+              <Route path="assignments" element={<StudentAssignments />} />
+              <Route path="assignments/:assignmentId" element={<StudentAssignmentDetail />} />
+            </Route>
+            
+            {/* Catch-all route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

@@ -1,226 +1,212 @@
 
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Eye, EyeOff, UserPlus } from 'lucide-react';
-import Header from '../components/Header';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { UserPlus } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { useAuth } from '@/contexts/AuthContext';
+import { UserType } from '@/types';
+import ThemeToggle from '@/components/ThemeToggle';
+
+const formSchema = z.object({
+  name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
+  email: z.string().email({ message: 'Please enter a valid email address' }),
+  password: z.string().min(6, { message: 'Password must be at least 6 characters' }),
+  confirmPassword: z.string(),
+  userType: z.enum(['teacher', 'student']),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ['confirmPassword'],
+});
 
 const Register = () => {
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    role: 'student',
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
   const navigate = useNavigate();
-  
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-  
-  const validateForm = () => {
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return false;
-    }
-    
-    if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters long');
-      return false;
-    }
-    
-    setError('');
-    return true;
-  };
-  
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-    
+  const { register } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      userType: 'student',
+    },
+  });
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      console.log('Registration data:', formData);
-      setIsLoading(false);
+    try {
+      const success = await register(
+        values.name,
+        values.email, 
+        values.password, 
+        values.userType as UserType
+      );
       
-      // Redirect based on role (in a real app, this would happen after successful registration)
-      if (formData.role === 'teacher') {
-        navigate('/teacher/dashboard');
-      } else {
-        navigate('/student/dashboard');
+      if (success) {
+        const redirectPath = values.userType === 'teacher' 
+          ? '/teacher/dashboard' 
+          : '/student/dashboard';
+        navigate(redirectPath);
       }
-    }, 1500);
+    } finally {
+      setIsLoading(false);
+    }
   };
-  
-  const togglePasswordVisibility = () => {
-    setShowPassword((prev) => !prev);
-  };
-  
-  const toggleConfirmPasswordVisibility = () => {
-    setShowConfirmPassword((prev) => !prev);
-  };
-  
+
   return (
-    <div className="min-h-screen flex flex-col bg-secondary/30">
-      <Header />
+    <div className="min-h-screen bg-background flex flex-col">
+      <header className="w-full flex justify-between items-center py-4 px-6">
+        <Link to="/" className="text-xl font-display font-bold text-gradient">
+          AssignGuard
+        </Link>
+        <ThemeToggle />
+      </header>
       
-      <div className="flex-1 flex items-center justify-center px-6 pt-16 pb-10">
-        <div className="w-full max-w-md animate-scale">
-          <div className="mb-8">
-            <Link to="/" className="inline-flex items-center text-foreground/70 hover:text-foreground transition-colors">
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Home
-            </Link>
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-md space-y-6">
+          <div className="text-center">
+            <div className="mx-auto w-16 h-16 mb-4 bg-primary/10 rounded-full flex items-center justify-center">
+              <UserPlus className="h-8 w-8 text-primary" />
+            </div>
+            <h1 className="text-2xl font-bold">Create Your Account</h1>
+            <p className="text-muted-foreground mt-2">
+              Register to get started with AssignGuard
+            </p>
           </div>
           
-          <div className="glass-card p-8">
-            <div className="text-center mb-8">
-              <h1 className="text-2xl font-bold">Create Your Account</h1>
-              <p className="text-foreground/70 mt-2">Join our academic integrity platform</p>
-            </div>
-            
-            {error && (
-              <div className="mb-6 p-3 bg-destructive/10 border border-destructive/20 text-destructive rounded-lg text-center">
-                {error}
-              </div>
-            )}
-            
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label htmlFor="fullName" className="block text-sm font-medium mb-2">
-                  Full Name
-                </label>
-                <input
-                  id="fullName"
-                  name="fullName"
-                  type="text"
-                  required
-                  value={formData.fullName}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-lg border subtle-border bg-background/50 focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all"
-                  placeholder="John Doe"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium mb-2">
-                  Email Address
-                </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-lg border subtle-border bg-background/50 focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all"
-                  placeholder="you@example.com"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium mb-2">
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 rounded-lg border subtle-border bg-background/50 focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all"
-                    placeholder="••••••••"
-                  />
-                  <button
-                    type="button"
-                    onClick={togglePasswordVisibility}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-foreground/50 hover:text-foreground"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5" />
-                    ) : (
-                      <Eye className="h-5 w-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-              
-              <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium mb-2">
-                  Confirm Password
-                </label>
-                <div className="relative">
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    required
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 rounded-lg border subtle-border bg-background/50 focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all"
-                    placeholder="••••••••"
-                  />
-                  <button
-                    type="button"
-                    onClick={toggleConfirmPasswordVisibility}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-foreground/50 hover:text-foreground"
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="h-5 w-5" />
-                    ) : (
-                      <Eye className="h-5 w-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-              
-              <div>
-                <label htmlFor="role" className="block text-sm font-medium mb-2">
-                  I am a
-                </label>
-                <select
-                  id="role"
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-lg border subtle-border bg-background/50 focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all"
-                >
-                  <option value="student">Student</option>
-                  <option value="teacher">Teacher</option>
-                </select>
-              </div>
-              
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-primary text-primary-foreground py-3 rounded-lg font-medium transition-all hover:bg-primary/90 flex items-center justify-center"
-              >
-                {isLoading ? (
-                  <div className="h-5 w-5 border-2 border-t-transparent border-white/80 rounded-full animate-spin"></div>
-                ) : (
-                  <>
-                    Create Account <UserPlus className="ml-2 h-5 w-5" />
-                  </>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="userType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>I am a</FormLabel>
+                    <div className="flex space-x-4">
+                      <Button
+                        type="button"
+                        variant={field.value === 'student' ? 'default' : 'outline'}
+                        className="flex-1"
+                        onClick={() => field.onChange('student')}
+                      >
+                        Student
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={field.value === 'teacher' ? 'default' : 'outline'}
+                        className="flex-1"
+                        onClick={() => field.onChange('teacher')}
+                      >
+                        Teacher
+                      </Button>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </button>
+              />
+              
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="John Doe"
+                        {...field}
+                        autoComplete="name"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="your.email@example.com"
+                        {...field}
+                        autoComplete="email"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        {...field}
+                        autoComplete="new-password"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirm Password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        {...field}
+                        autoComplete="new-password"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? 'Creating Account...' : 'Create Account'}
+              </Button>
             </form>
-            
-            <div className="mt-8 text-center">
-              <p className="text-foreground/70">
-                Already have an account?{' '}
-                <Link to="/login" className="text-primary hover:text-primary/80 transition-colors font-medium">
-                  Sign in
-                </Link>
-              </p>
-            </div>
+          </Form>
+          
+          <div className="text-center text-sm">
+            <p className="text-muted-foreground">
+              Already have an account?{' '}
+              <Link to="/login" className="text-primary hover:underline">
+                Sign in
+              </Link>
+            </p>
           </div>
         </div>
       </div>
