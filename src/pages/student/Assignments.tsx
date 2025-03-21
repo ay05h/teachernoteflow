@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,12 +8,20 @@ import { Input } from '@/components/ui/input';
 import { mockAssignments, mockCourses, mockSubmissions } from '@/services/mockData';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import { useAuth } from '@/contexts/AuthContext';
 
 const StudentAssignments = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const { user } = useAuth();
+  const [assignments, setAssignments] = useState(mockAssignments);
+  
+  // Refresh assignments when component mounts
+  useEffect(() => {
+    setAssignments(mockAssignments);
+  }, []);
   
   // Filter assignments based on search term
-  const filteredAssignments = mockAssignments.filter(assignment => 
+  const filteredAssignments = assignments.filter(assignment => 
     assignment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     assignment.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -27,16 +35,8 @@ const StudentAssignments = () => {
   // Check if student has submitted an assignment
   const hasSubmitted = (assignmentId: string) => {
     return mockSubmissions.some(
-      s => s.assignmentId === assignmentId && s.studentId === 'student1' // Hardcoded for demo
+      s => s.assignmentId === assignmentId && s.studentId === user?.id
     );
-  };
-  
-  // Get submission ID if student has submitted
-  const getSubmissionId = (assignmentId: string) => {
-    const submission = mockSubmissions.find(
-      s => s.assignmentId === assignmentId && s.studentId === 'student1'
-    );
-    return submission ? submission.id : null;
   };
   
   // Calculate time status for assignment
@@ -90,7 +90,7 @@ const StudentAssignments = () => {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredAssignments.map((assignment) => {
-            const timeStatus = getTimeStatus(assignment.dueDate);
+            const timeStatus = getTimeStatus(new Date(assignment.dueDate));
             const submitted = hasSubmitted(assignment.id);
             
             return (

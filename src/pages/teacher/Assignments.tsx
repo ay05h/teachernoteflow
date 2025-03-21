@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,9 +11,15 @@ import { format } from 'date-fns';
 
 const TeacherAssignments = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [assignments, setAssignments] = useState(mockAssignments);
+  
+  // Refresh assignments when component mounts
+  useEffect(() => {
+    setAssignments(mockAssignments);
+  }, []);
   
   // Filter assignments based on search term
-  const filteredAssignments = mockAssignments.filter(assignment => 
+  const filteredAssignments = assignments.filter(assignment => 
     assignment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     assignment.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
