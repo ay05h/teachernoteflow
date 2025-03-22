@@ -11,7 +11,7 @@ import {
   DropdownMenuLabel, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { mockAssignments, mockCourses } from '@/services/mockData';
+import { mockAssignments, mockCourses, deleteCourse } from '@/services/mockData';
 import { useToast } from '@/components/ui/use-toast';
 import {
   AlertDialog,
@@ -61,17 +61,21 @@ const TeacherCourses = () => {
   // Handle actual course deletion
   const handleDeleteCourse = () => {
     if (deletingCourseId) {
-      // Filter out the course to be deleted
-      const updatedCourses = mockCourses.filter(course => course.id !== deletingCourseId);
-      // Update localStorage
-      localStorage.setItem('courses', JSON.stringify(updatedCourses));
-      // Update the global variable
-      mockCourses = updatedCourses;
+      // Use the deleteCourse function from mockData.ts
+      const success = deleteCourse(deletingCourseId);
       
-      toast({
-        title: "Course Deleted",
-        description: "The course has been successfully deleted.",
-      });
+      if (success) {
+        toast({
+          title: "Course Deleted",
+          description: "The course has been successfully deleted.",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "There was a problem deleting the course.",
+          variant: "destructive",
+        });
+      }
       
       // Close dialog
       setDeletingCourseId(null);
