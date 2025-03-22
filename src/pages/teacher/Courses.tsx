@@ -23,10 +23,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 const TeacherCourses = () => {
   const [search, setSearch] = useState('');
   const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
+  const [viewingCourseId, setViewingCourseId] = useState<string | null>(null);
+  const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editCode, setEditCode] = useState('');
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -38,19 +52,65 @@ const TeacherCourses = () => {
 
   // Handle view course details
   const handleViewDetails = (courseId: string) => {
-    // For now just show a toast since we don't have a dedicated course details page
-    toast({
-      title: "Course Details",
-      description: "Viewing course details. This feature will be expanded soon.",
-    });
+    const course = mockCourses.find(c => c.id === courseId);
+    if (course) {
+      setViewingCourseId(courseId);
+    }
+  };
+
+  // Close view details dialog
+  const handleCloseViewDialog = () => {
+    setViewingCourseId(null);
   };
 
   // Handle edit course
   const handleEditCourse = (courseId: string) => {
-    toast({
-      title: "Edit Course",
-      description: "Course editing functionality will be available soon.",
-    });
+    const course = mockCourses.find(c => c.id === courseId);
+    if (course) {
+      setEditTitle(course.title);
+      setEditDescription(course.description);
+      setEditCode(course.code);
+      setEditingCourseId(courseId);
+    }
+  };
+
+  // Close edit dialog
+  const handleCloseEditDialog = () => {
+    setEditingCourseId(null);
+    setEditTitle('');
+    setEditDescription('');
+    setEditCode('');
+  };
+
+  // Handle save edited course
+  const handleSaveEditedCourse = () => {
+    if (!editingCourseId) return;
+    
+    const courseIndex = mockCourses.findIndex(course => course.id === editingCourseId);
+    if (courseIndex !== -1) {
+      // Create a new array with the updated course
+      const updatedCourses = [...mockCourses];
+      updatedCourses[courseIndex] = {
+        ...updatedCourses[courseIndex],
+        title: editTitle,
+        description: editDescription,
+        code: editCode
+      };
+      
+      // Update localStorage
+      localStorage.setItem('courses', JSON.stringify(updatedCourses));
+      
+      toast({
+        title: "Course Updated",
+        description: "The course has been successfully updated.",
+      });
+      
+      // Close dialog
+      handleCloseEditDialog();
+      
+      // Force a reload of the component
+      window.location.reload();
+    }
   };
 
   // Handle delete course confirmation dialog
@@ -69,6 +129,9 @@ const TeacherCourses = () => {
           title: "Course Deleted",
           description: "The course has been successfully deleted.",
         });
+        
+        // Force a reload of the component to show updated list
+        window.location.reload();
       } else {
         toast({
           title: "Error",
@@ -217,6 +280,101 @@ const TeacherCourses = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* View Course Details Dialog */}
+      <Dialog open={!!viewingCourseId} onOpenChange={(open) => !open && handleCloseViewDialog()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Course Details</DialogTitle>
+          </DialogHeader>
+          {viewingCourseId && (
+            <div className="space-y-4">
+              {(() => {
+                const course = mockCourses.find(c => c.id === viewingCourseId);
+                return course ? (
+                  <>
+                    <div>
+                      <h3 className="text-lg font-semibold">{course.title}</h3>
+                      <p className="text-sm text-muted-foreground">Course Code: {course.code}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium mb-1">Description</h4>
+                      <p className="text-sm">{course.description}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium mb-1">Created On</h4>
+                      <p className="text-sm">{new Date(course.createdAt).toLocaleDateString()}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium mb-1">Total Assignments</h4>
+                      <p className="text-sm">
+                        {mockAssignments.filter(a => a.courseId === course.id).length}
+                      </p>
+                    </div>
+                  </>
+                ) : <p>Course not found</p>;
+              })()}
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={handleCloseViewDialog}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Course Dialog */}
+      <Dialog open={!!editingCourseId} onOpenChange={(open) => !open && handleCloseEditDialog()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Course</DialogTitle>
+            <DialogDescription>
+              Make changes to your course details below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid gap-2">
+              <label htmlFor="title" className="text-sm font-medium">
+                Course Title
+              </label>
+              <Input
+                id="title"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="Enter course title"
+              />
+            </div>
+            <div className="grid gap-2">
+              <label htmlFor="code" className="text-sm font-medium">
+                Course Code
+              </label>
+              <Input
+                id="code"
+                value={editCode}
+                onChange={(e) => setEditCode(e.target.value)}
+                placeholder="Enter course code"
+              />
+            </div>
+            <div className="grid gap-2">
+              <label htmlFor="description" className="text-sm font-medium">
+                Description
+              </label>
+              <Textarea
+                id="description"
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Enter course description"
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseEditDialog}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEditedCourse}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

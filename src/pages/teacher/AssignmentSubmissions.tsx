@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -42,13 +42,19 @@ const TeacherAssignmentSubmissions = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const assignment = mockAssignments.find(a => a.id === assignmentId);
-  const submissions = mockSubmissions.filter(s => s.assignmentId === assignmentId);
+  const [assignment, setAssignment] = useState(mockAssignments.find(a => a.id === assignmentId));
+  const [submissions, setSubmissions] = useState(mockSubmissions.filter(s => s.assignmentId === assignmentId));
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSubmission, setSelectedSubmission] = useState<string | null>(null);
   const [marks, setMarks] = useState<string>('');
   const [feedback, setFeedback] = useState<string>('');
+  
+  // Refresh data when component mounts or when mockSubmissions changes
+  useEffect(() => {
+    setAssignment(mockAssignments.find(a => a.id === assignmentId));
+    setSubmissions(mockSubmissions.filter(s => s.assignmentId === assignmentId));
+  }, [assignmentId, mockSubmissions, mockAssignments]);
   
   const filteredSubmissions = submissions.filter(submission => 
     submission.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -107,6 +113,13 @@ const TeacherAssignmentSubmissions = () => {
         title: "Success",
         description: "Submission graded successfully",
       });
+      
+      // Update local state to reflect changes
+      setSubmissions(prevSubmissions => 
+        prevSubmissions.map(s => 
+          s.id === selectedSubmission ? { ...s, marks: numericMarks, feedback } : s
+        )
+      );
       
       // Close the dialog
       handleCloseDialog();
@@ -343,7 +356,7 @@ const TeacherAssignmentSubmissions = () => {
             <Button variant="outline" onClick={handleCloseDialog}>
               Cancel
             </Button>
-            <Button onClick={handleSaveGrading}>Save</Button>
+            <Button onClick={handleSaveGrading}>Save Grading</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
