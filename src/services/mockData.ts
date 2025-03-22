@@ -75,13 +75,59 @@ export const getSubmissionById = (submissionId: string): Submission | undefined 
 
 // Function to update a submission (for grading)
 export const updateSubmission = (submissionId: string, updates: Partial<Submission>): Submission | undefined => {
-  const index = mockSubmissions.findIndex(submission => submission.id === submissionId);
-  if (index !== -1) {
-    mockSubmissions[index] = { ...mockSubmissions[index], ...updates };
-    storeData('submissions', mockSubmissions);
-    return mockSubmissions[index];
+  try {
+    const index = mockSubmissions.findIndex(submission => submission.id === submissionId);
+    
+    if (index !== -1) {
+      // Create a new array with the updated submission
+      const updatedSubmissions = [...mockSubmissions];
+      updatedSubmissions[index] = { 
+        ...updatedSubmissions[index], 
+        ...updates 
+      };
+      
+      // Update the global variable
+      mockSubmissions = updatedSubmissions;
+      
+      // Store in localStorage
+      storeData('submissions', mockSubmissions);
+      
+      return mockSubmissions[index];
+    }
+    return undefined;
+  } catch (error) {
+    console.error("Error updating submission:", error);
+    return undefined;
   }
-  return undefined;
+};
+
+// Function to delete a course
+export const deleteCourse = (courseId: string): boolean => {
+  try {
+    // Remove the course
+    mockCourses = mockCourses.filter(course => course.id !== courseId);
+    storeData('courses', mockCourses);
+    
+    // Find all assignments for this course
+    const courseAssignmentIds = mockAssignments
+      .filter(assignment => assignment.courseId === courseId)
+      .map(assignment => assignment.id);
+    
+    // Remove all assignments for this course
+    mockAssignments = mockAssignments.filter(assignment => assignment.courseId !== courseId);
+    storeData('assignments', mockAssignments);
+    
+    // Remove all submissions for the deleted assignments
+    mockSubmissions = mockSubmissions.filter(
+      submission => !courseAssignmentIds.includes(submission.assignmentId)
+    );
+    storeData('submissions', mockSubmissions);
+    
+    return true;
+  } catch (error) {
+    console.error("Error deleting course:", error);
+    return false;
+  }
 };
 
 // Simple function to generate random plagiarism score

@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Book, Calendar, FileText, MoreHorizontal, Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,15 +12,71 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { mockAssignments, mockCourses } from '@/services/mockData';
+import { useToast } from '@/components/ui/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const TeacherCourses = () => {
   const [search, setSearch] = useState('');
+  const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
+  const { toast } = useToast();
+  const navigate = useNavigate();
   
   // Filter courses based on search
   const filteredCourses = mockCourses.filter(
     course => course.title.toLowerCase().includes(search.toLowerCase()) || 
     course.code.toLowerCase().includes(search.toLowerCase())
   );
+
+  // Handle view course details
+  const handleViewDetails = (courseId: string) => {
+    // For now just show a toast since we don't have a dedicated course details page
+    toast({
+      title: "Course Details",
+      description: "Viewing course details. This feature will be expanded soon.",
+    });
+  };
+
+  // Handle edit course
+  const handleEditCourse = (courseId: string) => {
+    toast({
+      title: "Edit Course",
+      description: "Course editing functionality will be available soon.",
+    });
+  };
+
+  // Handle delete course confirmation dialog
+  const handleDeleteClick = (courseId: string) => {
+    setDeletingCourseId(courseId);
+  };
+
+  // Handle actual course deletion
+  const handleDeleteCourse = () => {
+    if (deletingCourseId) {
+      // Filter out the course to be deleted
+      const updatedCourses = mockCourses.filter(course => course.id !== deletingCourseId);
+      // Update localStorage
+      localStorage.setItem('courses', JSON.stringify(updatedCourses));
+      // Update the global variable
+      mockCourses = updatedCourses;
+      
+      toast({
+        title: "Course Deleted",
+        description: "The course has been successfully deleted.",
+      });
+      
+      // Close dialog
+      setDeletingCourseId(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -67,9 +123,16 @@ const TeacherCourses = () => {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem>Edit Course</DropdownMenuItem>
-                      <DropdownMenuItem>Create Assignment</DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">
+                      <DropdownMenuItem onClick={() => handleEditCourse(course.id)}>
+                        Edit Course
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate(`/teacher/assignments/create?course=${course.id}`)}>
+                        Create Assignment
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="text-destructive"
+                        onClick={() => handleDeleteClick(course.id)}
+                      >
                         Delete Course
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -89,7 +152,7 @@ const TeacherCourses = () => {
                 <div className="flex flex-wrap gap-3 mb-4">
                   <div className="flex items-center text-sm text-foreground/70">
                     <Calendar className="mr-1 h-4 w-4" />
-                    {course.createdAt.toLocaleDateString()}
+                    {new Date(course.createdAt).toLocaleDateString()}
                   </div>
                   <div className="flex items-center text-sm text-foreground/70">
                     <FileText className="mr-1 h-4 w-4" />
@@ -104,7 +167,13 @@ const TeacherCourses = () => {
                       Assignment
                     </Button>
                   </Link>
-                  <Button size="sm" variant="outline">View Details</Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => handleViewDetails(course.id)}
+                  >
+                    View Details
+                  </Button>
                 </div>
               </div>
             );
@@ -125,6 +194,25 @@ const TeacherCourses = () => {
           </Link>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingCourseId} onOpenChange={(open) => !open && setDeletingCourseId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the course
+              and all related assignments.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteCourse} className="bg-destructive text-destructive-foreground">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

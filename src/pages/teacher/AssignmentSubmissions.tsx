@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
@@ -19,7 +20,7 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { mockAssignments, mockSubmissions } from '@/services/mockData';
+import { mockAssignments, mockSubmissions, updateSubmission } from '@/services/mockData';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import PlagiarismMeter from '@/components/PlagiarismMeter';
@@ -70,18 +71,52 @@ const TeacherAssignmentSubmissions = () => {
   };
   
   const handleSaveGrading = () => {
-    console.log({
-      submissionId: selectedSubmission,
-      marks: parseInt(marks),
-      feedback,
+    if (!selectedSubmission) return;
+    
+    // Parse marks as a number
+    const numericMarks = parseInt(marks);
+    
+    // Validate marks
+    if (isNaN(numericMarks)) {
+      toast({
+        title: "Invalid marks",
+        description: "Please enter a valid number for marks.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Check if marks exceed the total marks
+    if (assignment && numericMarks > assignment.totalMarks) {
+      toast({
+        title: "Invalid marks",
+        description: `Marks cannot exceed the maximum of ${assignment.totalMarks}.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Update the submission
+    const updatedSubmission = updateSubmission(selectedSubmission, {
+      marks: numericMarks,
+      feedback: feedback
     });
     
-    toast({
-      title: 'Success',
-      description: 'Submission graded successfully',
-    });
-    
-    handleCloseDialog();
+    if (updatedSubmission) {
+      toast({
+        title: "Success",
+        description: "Submission graded successfully",
+      });
+      
+      // Close the dialog
+      handleCloseDialog();
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to update submission. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   const totalSubmissions = submissions.length;
@@ -109,6 +144,17 @@ const TeacherAssignmentSubmissions = () => {
       </div>
     );
   }
+
+  // Handle download action
+  const handleDownload = (submissionId: string) => {
+    const submission = submissions.find(s => s.id === submissionId);
+    if (submission) {
+      toast({
+        title: "Download Started",
+        description: `Downloading submission from ${submission.studentName}`,
+      });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -234,7 +280,11 @@ const TeacherAssignmentSubmissions = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-2 justify-end">
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleDownload(submission.id)}
+                        >
                           <Download className="h-4 w-4" />
                         </Button>
                         <Button 
