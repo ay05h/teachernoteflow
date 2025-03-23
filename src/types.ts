@@ -52,6 +52,7 @@ export interface Notification {
 }
 
 // Plagiarism cluster for grouping identical content
+// For identical content, the plagiarismScore is always 100%
 export interface PlagiarismCluster {
   plagiarismScore: number;
   studentNames: string[];

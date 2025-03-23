@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
@@ -53,10 +52,7 @@ const TeacherAssignmentSubmissions = () => {
   const [marks, setMarks] = useState<string>('');
   const [feedback, setFeedback] = useState<string>('');
   
-  // Function to generate content hash for clustering
   const generateContentHash = (content: string): string => {
-    // Simple hash function for demo purposes
-    // In a real app, use a more robust hashing algorithm
     return content
       .trim()
       .toLowerCase()
@@ -68,7 +64,6 @@ const TeacherAssignmentSubmissions = () => {
       .toString(36);
   };
   
-  // Function to cluster submissions with identical content
   const clusterSubmissions = (subs: Submission[]) => {
     const clusters: Record<string, PlagiarismCluster> = {};
     
@@ -79,7 +74,7 @@ const TeacherAssignmentSubmissions = () => {
       
       if (!clusters[contentHash]) {
         clusters[contentHash] = {
-          plagiarismScore: sub.plagiarismScore || 0,
+          plagiarismScore: 100,
           studentNames: [sub.studentName],
           contentHash
         };
@@ -90,19 +85,16 @@ const TeacherAssignmentSubmissions = () => {
       }
     });
     
-    // Convert the record to an array and filter out clusters with only 1 student (no duplicates)
     return Object.values(clusters)
       .filter(cluster => cluster.studentNames.length > 1)
       .sort((a, b) => b.plagiarismScore - a.plagiarismScore);
   };
   
-  // Refresh data when component mounts or when mockSubmissions changes
   useEffect(() => {
     setAssignment(mockAssignments.find(a => a.id === assignmentId));
     const filteredSubmissions = mockSubmissions.filter(s => s.assignmentId === assignmentId);
     setSubmissions(filteredSubmissions);
     
-    // Generate plagiarism clusters
     const clusters = clusterSubmissions(filteredSubmissions);
     setPlagiarismClusters(clusters);
   }, [assignmentId, mockSubmissions, mockAssignments]);
@@ -130,10 +122,8 @@ const TeacherAssignmentSubmissions = () => {
   const handleSaveGrading = () => {
     if (!selectedSubmission) return;
     
-    // Parse marks as a number
     const numericMarks = parseInt(marks);
     
-    // Validate marks
     if (isNaN(numericMarks)) {
       toast({
         title: "Invalid marks",
@@ -143,7 +133,6 @@ const TeacherAssignmentSubmissions = () => {
       return;
     }
     
-    // Check if marks exceed the total marks
     if (assignment && numericMarks > assignment.totalMarks) {
       toast({
         title: "Invalid marks",
@@ -153,7 +142,6 @@ const TeacherAssignmentSubmissions = () => {
       return;
     }
     
-    // Update the submission
     const updatedSubmission = updateSubmission(selectedSubmission, {
       marks: numericMarks,
       feedback: feedback
@@ -165,14 +153,12 @@ const TeacherAssignmentSubmissions = () => {
         description: "Submission graded successfully",
       });
       
-      // Update local state to reflect changes
       setSubmissions(prevSubmissions => 
         prevSubmissions.map(s => 
           s.id === selectedSubmission ? { ...s, marks: numericMarks, feedback } : s
         )
       );
       
-      // Close the dialog
       handleCloseDialog();
     } else {
       toast({
@@ -209,10 +195,19 @@ const TeacherAssignmentSubmissions = () => {
     );
   }
 
-  // Handle download action
   const handleDownload = (submissionId: string) => {
     const submission = submissions.find(s => s.id === submissionId);
     if (submission) {
+      const anchor = document.createElement('a');
+      anchor.href = submission.fileUrl;
+      
+      const fileName = `submission_${submission.studentName.replace(/\s+/g, '_')}.txt`;
+      anchor.download = fileName;
+      
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      
       toast({
         title: "Download Started",
         description: `Downloading submission from ${submission.studentName}`,
@@ -286,7 +281,6 @@ const TeacherAssignmentSubmissions = () => {
         </CardContent>
       </Card>
       
-      {/* Plagiarism Clusters Card */}
       {plagiarismClusters.length > 0 && (
         <Card>
           <CardHeader>
@@ -302,8 +296,8 @@ const TeacherAssignmentSubmissions = () => {
                   <div className="flex items-center justify-between mb-2">
                     <div className="font-semibold">Cluster {index + 1}</div>
                     <div className="flex items-center">
-                      <PlagiarismMeter score={cluster.plagiarismScore} size="sm" showLabel={false} />
-                      <span className="ml-2">{cluster.plagiarismScore}% similarity</span>
+                      <PlagiarismMeter score={100} size="sm" showLabel={false} />
+                      <span className="ml-2">100% identical</span>
                     </div>
                   </div>
                   <div className="text-sm text-muted-foreground mb-2">

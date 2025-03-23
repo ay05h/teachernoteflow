@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
@@ -38,6 +37,14 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Initialize users array if it doesn't exist in localStorage
+  useEffect(() => {
+    const storedUsers = localStorage.getItem('users');
+    if (!storedUsers) {
+      localStorage.setItem('users', JSON.stringify([]));
+    }
+  }, []);
   
   // In a real app, this would be fetched from a backend
   // For demo, we'll use local storage
