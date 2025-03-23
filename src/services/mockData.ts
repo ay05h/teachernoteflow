@@ -1,4 +1,5 @@
-import { Assignment, Course, Notification, PlagiarismCluster, Submission } from '../types';
+
+import { Assignment, Course, Submission } from '../types';
 
 // Initialize data from localStorage or use empty arrays
 const getInitialData = <T>(key: string): T[] => {
@@ -26,11 +27,6 @@ const getInitialData = <T>(key: string): T[] => {
         ...item,
         createdAt: new Date(item.createdAt)
       }));
-    } else if (key === 'notifications') {
-      return parsedData.map((item: any) => ({
-        ...item,
-        createdAt: new Date(item.createdAt)
-      }));
     }
     
     return parsedData;
@@ -49,104 +45,6 @@ const storeData = <T>(key: string, data: T[]): void => {
 export let mockCourses: Course[] = getInitialData<Course>('courses');
 export let mockAssignments: Assignment[] = getInitialData<Assignment>('assignments');
 export let mockSubmissions: Submission[] = getInitialData<Submission>('submissions');
-export let mockNotifications: Notification[] = getInitialData<Notification>('notifications');
-
-// Function to add a notification
-export const addNotification = (notification: Omit<Notification, "id" | "createdAt">): Notification => {
-  const newNotification: Notification = {
-    ...notification,
-    id: `n${Date.now()}`, // Generate unique ID using timestamp
-    createdAt: new Date(),
-  };
-  
-  mockNotifications = [...mockNotifications, newNotification];
-  storeData('notifications', mockNotifications);
-  return newNotification;
-};
-
-// Function to mark a notification as read
-export const markNotificationAsRead = (notificationId: string): boolean => {
-  try {
-    const index = mockNotifications.findIndex(n => n.id === notificationId);
-    
-    if (index !== -1) {
-      mockNotifications[index] = {
-        ...mockNotifications[index],
-        isRead: true
-      };
-      
-      storeData('notifications', mockNotifications);
-      return true;
-    }
-    
-    return false;
-  } catch (error) {
-    console.error("Error marking notification as read:", error);
-    return false;
-  }
-};
-
-// Function to mark all notifications as read for a user
-export const markAllNotificationsAsRead = (userId: string): boolean => {
-  try {
-    mockNotifications = mockNotifications.map(notification => {
-      if (notification.userId === userId && !notification.isRead) {
-        return { ...notification, isRead: true };
-      }
-      return notification;
-    });
-    
-    storeData('notifications', mockNotifications);
-    return true;
-  } catch (error) {
-    console.error("Error marking all notifications as read:", error);
-    return false;
-  }
-};
-
-// Function to get notifications for a user
-export const getNotificationsForUser = (userId: string): Notification[] => {
-  return mockNotifications
-    .filter(notification => notification.userId === userId)
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-};
-
-// Function to get unread notification count for a user
-export const getUnreadNotificationCount = (userId: string): number => {
-  return mockNotifications.filter(notification => 
-    notification.userId === userId && !notification.isRead
-  ).length;
-};
-
-// Function to cluster submissions by plagiarism score
-export const getPlagiarismClusters = (assignmentId: string): PlagiarismCluster[] => {
-  const submissions = mockSubmissions.filter(s => s.assignmentId === assignmentId);
-  
-  // Group submissions by plagiarism score
-  const clusters: { [key: number]: PlagiarismCluster } = {};
-  
-  submissions.forEach(submission => {
-    const score = submission.plagiarismScore || 0;
-    
-    if (!clusters[score]) {
-      clusters[score] = {
-        score,
-        students: []
-      };
-    }
-    
-    clusters[score].students.push({
-      name: submission.studentName,
-      id: submission.studentId,
-      rollNumber: submission.rollNumber
-    });
-  });
-  
-  // Convert to array and sort by score descending
-  return Object.values(clusters)
-    .filter(cluster => cluster.students.length > 1) // Only include clusters with multiple students
-    .sort((a, b) => b.score - a.score);
-};
 
 // Function to add a new course
 export const addCourse = (course: Omit<Course, "id" | "teacherId" | "createdAt">): Course => {
@@ -159,18 +57,6 @@ export const addCourse = (course: Omit<Course, "id" | "teacherId" | "createdAt">
   
   mockCourses = [...mockCourses, newCourse];
   storeData('courses', mockCourses);
-  
-  // Add notification for students
-  const studentIds = ['student1', 'student2', 'student3']; // Mock student IDs
-  studentIds.forEach(studentId => {
-    addNotification({
-      userId: studentId,
-      title: "New Course Available",
-      message: `A new course "${course.title}" has been added.`,
-      isRead: false
-    });
-  });
-  
   return newCourse;
 };
 
@@ -184,20 +70,6 @@ export const addAssignment = (assignment: Omit<Assignment, "id" | "createdAt">):
   
   mockAssignments = [...mockAssignments, newAssignment];
   storeData('assignments', mockAssignments);
-  
-  // Add notification for students
-  const studentIds = ['student1', 'student2', 'student3']; // Mock student IDs
-  const course = mockCourses.find(c => c.id === assignment.courseId);
-  
-  studentIds.forEach(studentId => {
-    addNotification({
-      userId: studentId,
-      title: "New Assignment",
-      message: `A new assignment "${assignment.title}" has been added to ${course?.title || 'a course'}.`,
-      isRead: false
-    });
-  });
-  
   return newAssignment;
 };
 
@@ -271,27 +143,6 @@ export const addSubmission = (submission: Omit<Submission, "id" | "submittedAt" 
     
     mockSubmissions = [...mockSubmissions, newSubmission];
     storeData('submissions', mockSubmissions);
-    
-    // Add notification for teacher
-    const assignment = mockAssignments.find(a => a.id === submission.assignmentId);
-    
-    addNotification({
-      userId: 'teacher1', // Assuming the teacher has this ID
-      title: "New Submission",
-      message: `${submission.studentName} has submitted an assignment for "${assignment?.title || 'an assignment'}".`,
-      isRead: false
-    });
-    
-    // If high plagiarism score, add special notification
-    if (plagiarismScore > 50) {
-      addNotification({
-        userId: 'teacher1',
-        title: "High Plagiarism Detected",
-        message: `${submission.studentName}'s submission has a plagiarism score of ${plagiarismScore}%.`,
-        isRead: false
-      });
-    }
-    
     return newSubmission;
   } catch (error) {
     console.error("Error adding submission:", error);
@@ -328,19 +179,6 @@ export const updateSubmission = (submissionId: string, updates: Partial<Submissi
       // Store in localStorage
       storeData('submissions', mockSubmissions);
       
-      // If marks were updated, notify the student
-      if (updates.marks !== undefined) {
-        const submission = mockSubmissions[index];
-        const assignment = mockAssignments.find(a => a.id === submission.assignmentId);
-        
-        addNotification({
-          userId: submission.studentId,
-          title: "Assignment Graded",
-          message: `Your submission for "${assignment?.title || 'an assignment'}" has been graded. You received ${updates.marks} marks.`,
-          isRead: false
-        });
-      }
-      
       return mockSubmissions[index];
     }
     return undefined;
@@ -353,9 +191,6 @@ export const updateSubmission = (submissionId: string, updates: Partial<Submissi
 // Function to delete a course
 export const deleteCourse = (courseId: string): boolean => {
   try {
-    // Get course before deletion for notification
-    const course = mockCourses.find(c => c.id === courseId);
-    
     // Remove the course
     mockCourses = mockCourses.filter(course => course.id !== courseId);
     storeData('courses', mockCourses);
@@ -374,20 +209,6 @@ export const deleteCourse = (courseId: string): boolean => {
       submission => !courseAssignmentIds.includes(submission.assignmentId)
     );
     storeData('submissions', mockSubmissions);
-    
-    // Notify students about course deletion
-    if (course) {
-      const studentIds = ['student1', 'student2', 'student3']; // Mock student IDs
-      
-      studentIds.forEach(studentId => {
-        addNotification({
-          userId: studentId,
-          title: "Course Deleted",
-          message: `The course "${course.title}" has been deleted.`,
-          isRead: false
-        });
-      });
-    }
     
     return true;
   } catch (error) {

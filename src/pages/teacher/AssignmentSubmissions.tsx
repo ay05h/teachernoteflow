@@ -7,8 +7,7 @@ import {
   FilePen, 
   FileText,
   Search, 
-  UserCheck,
-  Users
+  UserCheck 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,21 +20,11 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { 
-  getPlagiarismClusters,
-  mockAssignments, 
-  mockSubmissions, 
-  updateSubmission 
-} from '@/services/mockData';
+import { mockAssignments, mockSubmissions, updateSubmission } from '@/services/mockData';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import PlagiarismMeter from '@/components/PlagiarismMeter';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { 
   Dialog, 
   DialogContent, 
@@ -47,7 +36,6 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import Chart from '@/components/Chart';
 import { useToast } from '@/components/ui/use-toast';
-import { PlagiarismCluster } from '@/types';
 
 const TeacherAssignmentSubmissions = () => {
   const { assignmentId } = useParams();
@@ -56,7 +44,6 @@ const TeacherAssignmentSubmissions = () => {
   
   const [assignment, setAssignment] = useState(mockAssignments.find(a => a.id === assignmentId));
   const [submissions, setSubmissions] = useState(mockSubmissions.filter(s => s.assignmentId === assignmentId));
-  const [plagiarismClusters, setPlagiarismClusters] = useState<PlagiarismCluster[]>([]);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSubmission, setSelectedSubmission] = useState<string | null>(null);
@@ -65,14 +52,8 @@ const TeacherAssignmentSubmissions = () => {
   
   // Refresh data when component mounts or when mockSubmissions changes
   useEffect(() => {
-    if (assignmentId) {
-      setAssignment(mockAssignments.find(a => a.id === assignmentId));
-      setSubmissions(mockSubmissions.filter(s => s.assignmentId === assignmentId));
-      
-      // Get plagiarism clusters
-      const clusters = getPlagiarismClusters(assignmentId);
-      setPlagiarismClusters(clusters);
-    }
+    setAssignment(mockAssignments.find(a => a.id === assignmentId));
+    setSubmissions(mockSubmissions.filter(s => s.assignmentId === assignmentId));
   }, [assignmentId, mockSubmissions, mockAssignments]);
   
   const filteredSubmissions = submissions.filter(submission => 
@@ -233,98 +214,26 @@ const TeacherAssignmentSubmissions = () => {
         </Card>
       </div>
       
-      {/* Plagiarism Analysis Section */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Plagiarism Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-80">
-              <Chart 
-                data={[
-                  { name: '0-20%', value: plagiarismRanges['0-20%'] },
-                  { name: '21-40%', value: plagiarismRanges['21-40%'] },
-                  { name: '41-60%', value: plagiarismRanges['41-60%'] },
-                  { name: '61-80%', value: plagiarismRanges['61-80%'] },
-                  { name: '81-100%', value: plagiarismRanges['81-100%'] },
-                ]} 
-                type="bar"
-                title="Plagiarism Distribution" 
-              />
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Plagiarism Clusters */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Plagiarism Clusters</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {plagiarismClusters.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-center">
-                <Users className="h-10 w-10 text-muted-foreground" />
-                <p className="mt-2 text-center text-muted-foreground">
-                  No plagiarism clusters detected. Clusters appear when multiple students have identical plagiarism scores.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {plagiarismClusters.map((cluster, index) => (
-                  <Collapsible key={index} className="border rounded-lg p-3">
-                    <CollapsibleTrigger asChild>
-                      <div className="flex items-center justify-between cursor-pointer">
-                        <div className="flex items-center gap-3">
-                          <PlagiarismMeter score={cluster.score} showLabel={false} />
-                          <div>
-                            <span className="font-medium">Plagiarism Score: {cluster.score}%</span>
-                            <p className="text-sm text-muted-foreground">{cluster.students.length} students</p>
-                          </div>
-                        </div>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <svg 
-                            xmlns="http://www.w3.org/2000/svg" 
-                            width="16" 
-                            height="16" 
-                            viewBox="0 0 24 24" 
-                            fill="none" 
-                            stroke="currentColor" 
-                            strokeWidth="2" 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            className="lucide lucide-chevron-down"
-                          >
-                            <path d="m6 9 6 6 6-6"/>
-                          </svg>
-                        </Button>
-                      </div>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-3">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Student Name</TableHead>
-                            <TableHead>Roll Number</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {cluster.students.map((student) => (
-                            <TableRow key={student.id}>
-                              <TableCell className="font-medium">{student.name}</TableCell>
-                              <TableCell>{student.rollNumber}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </CollapsibleContent>
-                  </Collapsible>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Plagiarism Analysis</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-80">
+            <Chart 
+              data={[
+                { name: '0-20%', value: plagiarismRanges['0-20%'] },
+                { name: '21-40%', value: plagiarismRanges['21-40%'] },
+                { name: '41-60%', value: plagiarismRanges['41-60%'] },
+                { name: '61-80%', value: plagiarismRanges['61-80%'] },
+                { name: '81-100%', value: plagiarismRanges['81-100%'] },
+              ]} 
+              type="bar"
+              title="Plagiarism Distribution" 
+            />
+          </div>
+        </CardContent>
+      </Card>
       
       <Card>
         <CardHeader>
