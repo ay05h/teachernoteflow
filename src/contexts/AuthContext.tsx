@@ -21,6 +21,10 @@ interface AuthContextType {
   isAuthenticated: boolean;
 }
 
+interface UserWithPassword extends User {
+  password: string;
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
@@ -30,9 +34,6 @@ export const useAuth = () => {
   }
   return context;
 };
-
-// Define a mock user database to check login credentials
-const mockUserDB: User[] = [];
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -49,60 +50,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string, userType: UserType): Promise<boolean> => {
-    // This would be a real API call in a production app
-    // For demo purposes, we'll simulate a successful login
     setIsLoading(true);
     try {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Check if user exists and validate user type
+      // Check if user exists and validate credentials
       const storedUsers = localStorage.getItem('users');
-      const users: User[] = storedUsers ? JSON.parse(storedUsers) : [];
+      const users: UserWithPassword[] = storedUsers ? JSON.parse(storedUsers) : [];
       
-      const existingUser = users.find(u => u.email === email);
+      const existingUser = users.find(u => u.email === email && u.password === password);
       
-      // If user exists, validate their type
-      if (existingUser) {
-        if (existingUser.type !== userType) {
-          toast({
-            title: "Login failed",
-            description: `This account is registered as a ${existingUser.type}, not a ${userType}.`,
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return false;
-        }
-        
-        setUser(existingUser);
-        localStorage.setItem('user', JSON.stringify(existingUser));
-        
+      // If user doesn't exist or password doesn't match
+      if (!existingUser) {
         toast({
-          title: "Login successful",
-          description: `Welcome back, ${existingUser.name}!`,
+          title: "Login failed",
+          description: "Invalid email or password.",
+          variant: "destructive",
         });
-        
-        return true;
+        setIsLoading(false);
+        return false;
       }
       
-      // If user doesn't exist, create a new one
-      const newUser: User = {
-        id: Math.random().toString(36).substring(2, 9),
-        name: email.split('@')[0], // Use part of the email as a name
-        email,
-        type: userType,
+      // Validate user type
+      if (existingUser.type !== userType) {
+        toast({
+          title: "Login failed",
+          description: `This account is registered as a ${existingUser.type}, not a ${userType}.`,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return false;
+      }
+      
+      // User exists and credentials match
+      const userWithoutPassword = {
+        id: existingUser.id,
+        name: existingUser.name,
+        email: existingUser.email,
+        type: existingUser.type
       };
       
-      // Store the new user in the mock database
-      users.push(newUser);
-      localStorage.setItem('users', JSON.stringify(users));
-      
-      setUser(newUser);
-      localStorage.setItem('user', JSON.stringify(newUser));
+      setUser(userWithoutPassword);
+      localStorage.setItem('user', JSON.stringify(userWithoutPassword));
       
       toast({
         title: "Login successful",
-        description: `Welcome, ${newUser.name}!`,
+        description: `Welcome back, ${existingUser.name}!`,
       });
       
       return true;
@@ -125,7 +119,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     password: string, 
     userType: UserType
   ): Promise<boolean> => {
-    // This would be a real API call in a production app
     setIsLoading(true);
     try {
       // Simulate API delay
@@ -133,7 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Check if user already exists
       const storedUsers = localStorage.getItem('users');
-      const users: User[] = storedUsers ? JSON.parse(storedUsers) : [];
+      const users: UserWithPassword[] = storedUsers ? JSON.parse(storedUsers) : [];
       
       if (users.some(u => u.email === email)) {
         toast({
@@ -144,11 +137,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
       
-      // For demo purposes, registration will always succeed
-      const newUser: User = {
+      // Create a new user with password
+      const newUser: UserWithPassword = {
         id: Math.random().toString(36).substring(2, 9),
         name,
         email,
+        password, // Store password for authentication
         type: userType,
       };
       
@@ -156,8 +150,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       users.push(newUser);
       localStorage.setItem('users', JSON.stringify(users));
       
-      setUser(newUser);
-      localStorage.setItem('user', JSON.stringify(newUser));
+      // Store user without password in the local state
+      const userWithoutPassword = {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        type: newUser.type
+      };
+      
+      setUser(userWithoutPassword);
+      localStorage.setItem('user', JSON.stringify(userWithoutPassword));
       
       toast({
         title: "Registration successful",

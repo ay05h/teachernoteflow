@@ -7,7 +7,8 @@ import {
   FilePen, 
   FileText,
   Search, 
-  UserCheck 
+  UserCheck,
+  Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,6 +37,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import Chart from '@/components/Chart';
 import { useToast } from '@/components/ui/use-toast';
+import { PlagiarismCluster, Submission } from '@/types';
 
 const TeacherAssignmentSubmissions = () => {
   const { assignmentId } = useParams();
@@ -44,16 +46,65 @@ const TeacherAssignmentSubmissions = () => {
   
   const [assignment, setAssignment] = useState(mockAssignments.find(a => a.id === assignmentId));
   const [submissions, setSubmissions] = useState(mockSubmissions.filter(s => s.assignmentId === assignmentId));
+  const [plagiarismClusters, setPlagiarismClusters] = useState<PlagiarismCluster[]>([]);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSubmission, setSelectedSubmission] = useState<string | null>(null);
   const [marks, setMarks] = useState<string>('');
   const [feedback, setFeedback] = useState<string>('');
   
+  // Function to generate content hash for clustering
+  const generateContentHash = (content: string): string => {
+    // Simple hash function for demo purposes
+    // In a real app, use a more robust hashing algorithm
+    return content
+      .trim()
+      .toLowerCase()
+      .split('')
+      .reduce((a, b) => {
+        a = ((a << 5) - a) + b.charCodeAt(0);
+        return a & a;
+      }, 0)
+      .toString(36);
+  };
+  
+  // Function to cluster submissions with identical content
+  const clusterSubmissions = (subs: Submission[]) => {
+    const clusters: Record<string, PlagiarismCluster> = {};
+    
+    subs.forEach(sub => {
+      if (!sub.fileContent) return;
+      
+      const contentHash = generateContentHash(sub.fileContent);
+      
+      if (!clusters[contentHash]) {
+        clusters[contentHash] = {
+          plagiarismScore: sub.plagiarismScore || 0,
+          studentNames: [sub.studentName],
+          contentHash
+        };
+      } else {
+        if (!clusters[contentHash].studentNames.includes(sub.studentName)) {
+          clusters[contentHash].studentNames.push(sub.studentName);
+        }
+      }
+    });
+    
+    // Convert the record to an array and filter out clusters with only 1 student (no duplicates)
+    return Object.values(clusters)
+      .filter(cluster => cluster.studentNames.length > 1)
+      .sort((a, b) => b.plagiarismScore - a.plagiarismScore);
+  };
+  
   // Refresh data when component mounts or when mockSubmissions changes
   useEffect(() => {
     setAssignment(mockAssignments.find(a => a.id === assignmentId));
-    setSubmissions(mockSubmissions.filter(s => s.assignmentId === assignmentId));
+    const filteredSubmissions = mockSubmissions.filter(s => s.assignmentId === assignmentId);
+    setSubmissions(filteredSubmissions);
+    
+    // Generate plagiarism clusters
+    const clusters = clusterSubmissions(filteredSubmissions);
+    setPlagiarismClusters(clusters);
   }, [assignmentId, mockSubmissions, mockAssignments]);
   
   const filteredSubmissions = submissions.filter(submission => 
@@ -234,6 +285,47 @@ const TeacherAssignmentSubmissions = () => {
           </div>
         </CardContent>
       </Card>
+      
+      {/* Plagiarism Clusters Card */}
+      {plagiarismClusters.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Users className="mr-2 h-5 w-5" />
+              Identical Content Clusters
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {plagiarismClusters.map((cluster, index) => (
+                <div key={index} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-semibold">Cluster {index + 1}</div>
+                    <div className="flex items-center">
+                      <PlagiarismMeter score={cluster.plagiarismScore} size="sm" showLabel={false} />
+                      <span className="ml-2">{cluster.plagiarismScore}% similarity</span>
+                    </div>
+                  </div>
+                  <div className="text-sm text-muted-foreground mb-2">
+                    {cluster.studentNames.length} students with identical content
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {cluster.studentNames.map((name, i) => (
+                      <Badge key={i} variant="outline">{name}</Badge>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              
+              {plagiarismClusters.length === 0 && (
+                <div className="text-center py-6 text-muted-foreground">
+                  No identical content clusters detected.
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
       
       <Card>
         <CardHeader>

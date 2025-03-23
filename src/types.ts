@@ -51,6 +51,13 @@ export interface Notification {
   createdAt: Date;
 }
 
+// Plagiarism cluster for grouping identical content
+export interface PlagiarismCluster {
+  plagiarismScore: number;
+  studentNames: string[];
+  contentHash: string; // To identify identical content
+}
+
 // Badge variants
 export type BadgeVariant = 
   | "default" 
