@@ -34,6 +34,7 @@ export interface Submission {
   studentId: string;
   studentName: string;
   fileUrl: string;
+  fileContent?: string; // Added to store the text content for plagiarism detection
   rollNumber: string;
   submittedAt: Date;
   marks?: number;

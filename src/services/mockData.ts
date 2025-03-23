@@ -73,14 +73,72 @@ export const addAssignment = (assignment: Omit<Assignment, "id" | "createdAt">):
   return newAssignment;
 };
 
+// Function to calculate text similarity (Jaccard similarity coefficient)
+const calculateTextSimilarity = (text1: string, text2: string): number => {
+  // Convert texts to lowercase and split into words
+  const words1 = text1.toLowerCase().split(/\s+/);
+  const words2 = text2.toLowerCase().split(/\s+/);
+  
+  // Create sets of unique words
+  const set1 = new Set(words1);
+  const set2 = new Set(words2);
+  
+  // Calculate intersection and union
+  const intersection = new Set([...set1].filter(x => set2.has(x)));
+  const union = new Set([...set1, ...set2]);
+  
+  // Calculate Jaccard similarity coefficient
+  return union.size === 0 ? 0 : (intersection.size / union.size) * 100;
+};
+
+// Function to detect plagiarism in a submission
+const detectPlagiarism = (text: string, assignmentId: string, studentId: string): number => {
+  // If this is the first submission for this assignment, return 0%
+  const previousSubmissions = mockSubmissions.filter(
+    s => s.assignmentId === assignmentId && s.studentId !== studentId
+  );
+  
+  if (previousSubmissions.length === 0) {
+    return 0;
+  }
+  
+  // Compare with all previous submissions
+  let maxSimilarity = 0;
+  
+  for (const submission of previousSubmissions) {
+    // Extract text from the file URL (in a real app, this would be a server-side operation)
+    try {
+      // In our mock system, assume the text is directly accessible
+      // In a real app, you would retrieve the text content from the server
+      const previousText = submission.fileContent || "";
+      
+      if (previousText) {
+        const similarity = calculateTextSimilarity(text, previousText);
+        maxSimilarity = Math.max(maxSimilarity, similarity);
+      }
+    } catch (error) {
+      console.error("Error comparing submissions:", error);
+    }
+  }
+  
+  return Math.round(maxSimilarity);
+};
+
 // Function to add a new submission
-export const addSubmission = (submission: Omit<Submission, "id" | "submittedAt">): Submission => {
+export const addSubmission = (submission: Omit<Submission, "id" | "submittedAt" | "plagiarismScore" | "fileContent"> & { fileContent: string }): Submission => {
   try {
+    // Calculate plagiarism score based on text similarity
+    const plagiarismScore = detectPlagiarism(
+      submission.fileContent,
+      submission.assignmentId,
+      submission.studentId
+    );
+    
     const newSubmission: Submission = {
       ...submission,
       id: `s${Date.now()}`, // Generate unique ID using timestamp
       submittedAt: new Date(),
-      plagiarismScore: generatePlagiarismScore()
+      plagiarismScore: plagiarismScore,
     };
     
     mockSubmissions = [...mockSubmissions, newSubmission];
@@ -159,7 +217,7 @@ export const deleteCourse = (courseId: string): boolean => {
   }
 };
 
-// Simple function to generate random plagiarism score
+// Simple function to generate random plagiarism score - no longer used
 export const generatePlagiarismScore = (): number => {
   return Math.floor(Math.random() * 100);
 };
