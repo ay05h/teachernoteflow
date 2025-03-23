@@ -3,11 +3,14 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
+import NotificationCenter from './NotificationCenter';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+  const { user } = useAuth();
   
   useEffect(() => {
     const handleScroll = () => {
@@ -72,23 +75,33 @@ const Header = () => {
             </nav>
             
             <div className="flex items-center space-x-4">
-              <Link 
-                to="/login" 
-                className="font-medium text-foreground/80 hover:text-foreground"
-              >
-                Login
-              </Link>
-              <Link 
-                to="/register" 
-                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
-                Sign Up
-              </Link>
-              <ThemeToggle />
+              {user ? (
+                <div className="flex items-center space-x-2">
+                  <NotificationCenter />
+                  <ThemeToggle />
+                </div>
+              ) : (
+                <>
+                  <Link 
+                    to="/login" 
+                    className="font-medium text-foreground/80 hover:text-foreground"
+                  >
+                    Login
+                  </Link>
+                  <Link 
+                    to="/register" 
+                    className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                  >
+                    Sign Up
+                  </Link>
+                  <ThemeToggle />
+                </>
+              )}
             </div>
           </div>
           
           <div className="flex items-center md:hidden">
+            {user && <NotificationCenter />}
             <ThemeToggle />
             <button 
               onClick={toggleMenu} 
@@ -126,22 +139,24 @@ const Header = () => {
               {link.name}
             </Link>
           ))}
-          <div className="pt-4 flex flex-col space-y-4">
-            <Link 
-              to="/login" 
-              className="py-3 text-center font-medium text-foreground/80 hover:text-foreground border subtle-border rounded-lg"
-              onClick={closeMenu}
-            >
-              Login
-            </Link>
-            <Link 
-              to="/register" 
-              className="py-3 text-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-              onClick={closeMenu}
-            >
-              Sign Up
-            </Link>
-          </div>
+          {!user && (
+            <div className="pt-4 flex flex-col space-y-4">
+              <Link 
+                to="/login" 
+                className="py-3 text-center font-medium text-foreground/80 hover:text-foreground border subtle-border rounded-lg"
+                onClick={closeMenu}
+              >
+                Login
+              </Link>
+              <Link 
+                to="/register" 
+                className="py-3 text-center rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                onClick={closeMenu}
+              >
+                Sign Up
+              </Link>
+            </div>
+          )}
         </nav>
       </div>
     </header>

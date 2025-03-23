@@ -59,3 +59,24 @@ export type BadgeVariant =
   | "outline" 
   | "success"  // Added for submitted assignments
   | "warning"; // Added for due soon assignments
+
+// Notification types for different actions
+export type NotificationType = 
+  | "assignment_created"
+  | "assignment_updated"
+  | "course_created"
+  | "course_updated"
+  | "course_deleted"
+  | "submission_uploaded"
+  | "submission_graded"
+  | "plagiarism_detected";
+
+// Interface for clustered plagiarism data
+export interface PlagiarismCluster {
+  score: number;
+  students: {
+    name: string;
+    id: string;
+    rollNumber: string;
+  }[];
+}
