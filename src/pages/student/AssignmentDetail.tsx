@@ -19,8 +19,6 @@ import { useToast } from '@/hooks/use-toast';
 import PlagiarismMeter from '@/components/PlagiarismMeter';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
-import { AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const StudentAssignmentDetail = () => {
   const { assignmentId } = useParams();
@@ -55,56 +53,15 @@ const StudentAssignmentDetail = () => {
   
   const [rollNumber, setRollNumber] = useState(submission?.rollNumber || '');
   const [file, setFile] = useState<File | null>(null);
-  const [fileContent, setFileContent] = useState<string>('');
-  const [isFileValid, setIsFileValid] = useState(true);
-  const [fileError, setFileError] = useState<string | null>(null);
-  
-  // Handle file reading for text content extraction
-  const handleFileRead = (file: File) => {
-    if (!file) {
-      setIsFileValid(false);
-      setFileError('No file selected');
-      return;
-    }
-    
-    // Check if file is a .txt file
-    if (!file.name.toLowerCase().endsWith('.txt')) {
-      setIsFileValid(false);
-      setFileError('Only .txt files are allowed for plagiarism detection');
-      return;
-    }
-    
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      setFileContent(text);
-      setIsFileValid(true);
-      setFileError(null);
-    };
-    
-    reader.onerror = () => {
-      setIsFileValid(false);
-      setFileError('Error reading the file');
-    };
-    
-    reader.readAsText(file);
-  };
-  
-  // When a file is selected, read its content
-  useEffect(() => {
-    if (file) {
-      handleFileRead(file);
-    }
-  }, [file]);
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate form
-    if (!rollNumber || !file || !isFileValid) {
+    if (!rollNumber || !file) {
       toast({
         title: 'Error',
-        description: fileError || 'Please enter your roll number and upload a valid text file',
+        description: 'Please enter your roll number and upload a file',
         variant: 'destructive',
       });
       return;
@@ -119,14 +76,13 @@ const StudentAssignmentDetail = () => {
       return;
     }
     
-    // Create new submission with text content for plagiarism detection
+    // Create new submission
     const newSubmission = addSubmission({
       assignmentId: assignmentId || '',
       studentId: user.id,
       studentName: user.name,
       fileUrl: URL.createObjectURL(file), // In a real app, this would be a server URL
       rollNumber: rollNumber,
-      fileContent: fileContent, // Add the text content for plagiarism detection
     });
     
     // Show success message
@@ -257,9 +213,7 @@ const StudentAssignmentDetail = () => {
                     <p className="text-muted-foreground text-sm">
                       {submission.plagiarismScore && submission.plagiarismScore > 50 
                         ? 'High similarity detected with other submissions' 
-                        : submission.plagiarismScore > 0
-                          ? 'Low similarity with other submissions'
-                          : 'No similarity with other submissions'}
+                        : 'Low similarity with other submissions'}
                     </p>
                   </div>
                 </div>
@@ -299,14 +253,6 @@ const StudentAssignmentDetail = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Alert className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Important</AlertTitle>
-              <AlertDescription>
-                Only .txt files are accepted for plagiarism detection. Your submission will be checked against previous submissions to detect potential plagiarism.
-              </AlertDescription>
-            </Alert>
-            
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-4">
                 <div className="grid gap-2">
@@ -324,20 +270,16 @@ const StudentAssignmentDetail = () => {
                   <Label>Assignment File</Label>
                   <FileUploader 
                     onFileSelect={(selectedFile) => setFile(selectedFile)} 
-                    accept=".txt" 
-                    label="Upload Text File"
+                    accept=".pdf,.doc,.docx" 
                   />
-                  {fileError && (
-                    <p className="text-xs text-destructive">{fileError}</p>
-                  )}
                   <p className="text-xs text-muted-foreground">
-                    Only plain text (.txt) files are accepted
+                    Accepted file types: PDF, DOC, DOCX
                   </p>
                 </div>
               </div>
               
               <div className="flex justify-end">
-                <Button type="submit" disabled={!isFileValid}>
+                <Button type="submit">
                   <Upload className="mr-2 h-4 w-4" />
                   Submit Assignment
                 </Button>
