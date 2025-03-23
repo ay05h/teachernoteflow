@@ -4,7 +4,36 @@ import { Assignment, Course, Submission } from '../types';
 // Initialize data from localStorage or use empty arrays
 const getInitialData = <T>(key: string): T[] => {
   const storedData = localStorage.getItem(key);
-  return storedData ? JSON.parse(storedData) : [];
+  if (!storedData) return [];
+  
+  try {
+    // Parse the stored data
+    const parsedData = JSON.parse(storedData);
+    
+    // Process date fields if this is a known type
+    if (key === 'assignments') {
+      return parsedData.map((item: any) => ({
+        ...item,
+        dueDate: new Date(item.dueDate),
+        createdAt: new Date(item.createdAt)
+      }));
+    } else if (key === 'submissions') {
+      return parsedData.map((item: any) => ({
+        ...item,
+        submittedAt: new Date(item.submittedAt)
+      }));
+    } else if (key === 'courses') {
+      return parsedData.map((item: any) => ({
+        ...item,
+        createdAt: new Date(item.createdAt)
+      }));
+    }
+    
+    return parsedData;
+  } catch (error) {
+    console.error(`Error parsing data from localStorage for ${key}:`, error);
+    return [];
+  }
 };
 
 // Store data to localStorage

@@ -1,4 +1,3 @@
-
 import { Link } from 'react-router-dom';
 import { BookOpen, Clock, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,8 +18,16 @@ const StudentDashboard = () => {
   twoWeeksFromNow.setDate(now.getDate() + 14);
   
   const upcomingAssignments = mockAssignments
-    .filter(a => a.dueDate > now && a.dueDate <= twoWeeksFromNow)
-    .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime())
+    .filter(a => {
+      // Ensure dueDate is a proper Date object
+      const dueDate = a.dueDate instanceof Date ? a.dueDate : new Date(a.dueDate);
+      return dueDate > now && dueDate <= twoWeeksFromNow;
+    })
+    .sort((a, b) => {
+      const dueDateA = a.dueDate instanceof Date ? a.dueDate : new Date(a.dueDate);
+      const dueDateB = b.dueDate instanceof Date ? b.dueDate : new Date(b.dueDate);
+      return dueDateA.getTime() - dueDateB.getTime();
+    })
     .slice(0, 5);
   
   // For demo, assume some submissions belong to this student
@@ -129,7 +136,9 @@ const StudentDashboard = () => {
             {upcomingAssignments.map((assignment) => {
               const course = mockCourses.find(c => c.id === assignment.courseId);
               const submission = studentSubmissions.find(s => s.assignmentId === assignment.id);
-              const daysLeft = Math.ceil((assignment.dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              // Ensure dueDate is a proper Date object
+              const dueDate = assignment.dueDate instanceof Date ? assignment.dueDate : new Date(assignment.dueDate);
+              const daysLeft = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
               
               return (
                 <div key={assignment.id} className="border subtle-border rounded-lg p-4">

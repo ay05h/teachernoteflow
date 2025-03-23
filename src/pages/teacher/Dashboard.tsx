@@ -1,4 +1,3 @@
-
 import { Link } from 'react-router-dom';
 import { BookOpen, Clock, FileText, Plus, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -34,9 +33,14 @@ const TeacherDashboard = () => {
     { name: 'High (51-100%)', value: mockSubmissions.filter(s => (s.plagiarismScore || 0) > 50).length }
   ];
 
-  // Recent submissions
+  // Recent submissions - ensure submittedAt is properly handled as a Date
   const recentSubmissions = [...mockSubmissions]
-    .sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime())
+    .sort((a, b) => {
+      // Convert to Date objects if they're strings
+      const dateA = a.submittedAt instanceof Date ? a.submittedAt : new Date(a.submittedAt);
+      const dateB = b.submittedAt instanceof Date ? b.submittedAt : new Date(b.submittedAt);
+      return dateB.getTime() - dateA.getTime();
+    })
     .slice(0, 5);
 
   return (
@@ -144,12 +148,16 @@ const TeacherDashboard = () => {
             <tbody>
               {recentSubmissions.map((submission) => {
                 const assignment = mockAssignments.find(a => a.id === submission.assignmentId);
+                // Ensure submittedAt is a proper Date object
+                const submittedDate = submission.submittedAt instanceof Date 
+                  ? submission.submittedAt 
+                  : new Date(submission.submittedAt);
                 
                 return (
                   <tr key={submission.id} className="border-b subtle-border">
                     <td className="py-4">{submission.studentName}</td>
                     <td className="py-4">{assignment?.title}</td>
-                    <td className="py-4">{submission.submittedAt.toLocaleDateString()}</td>
+                    <td className="py-4">{submittedDate.toLocaleDateString()}</td>
                     <td className="py-4">
                       <div className="w-28">
                         <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
