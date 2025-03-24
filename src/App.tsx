@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,46 +21,46 @@ import About from "./pages/About";
 import Contact from "./pages/Contact";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./contexts/AuthContext";
+import { NotificationProvider } from "./contexts/NotificationContext";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-            
-            {/* Teacher Routes */}
-            <Route path="/teacher" element={<ProtectedRoute userType="teacher" />}>
-              <Route path="dashboard" element={<TeacherDashboard />} />
-              <Route path="courses" element={<TeacherCourses />} />
-              <Route path="courses/create" element={<TeacherCreateCourse />} />
-              <Route path="assignments" element={<TeacherAssignments />} />
-              <Route path="assignments/create" element={<TeacherCreateAssignment />} />
-              <Route path="assignments/:assignmentId/submissions" element={<TeacherAssignmentSubmissions />} />
-            </Route>
-            
-            {/* Student Routes */}
-            <Route path="/student" element={<ProtectedRoute userType="student" />}>
-              <Route path="dashboard" element={<StudentDashboard />} />
-              <Route path="courses" element={<StudentCourses />} />
-              <Route path="assignments" element={<StudentAssignments />} />
-              <Route path="assignments/:assignmentId" element={<StudentAssignmentDetail />} />
-            </Route>
-            
-            {/* Catch-all route */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <NotificationProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              
+              <Route path="/teacher" element={<ProtectedRoute userType="teacher" />}>
+                <Route path="dashboard" element={<TeacherDashboard />} />
+                <Route path="courses" element={<TeacherCourses />} />
+                <Route path="courses/create" element={<TeacherCreateCourse />} />
+                <Route path="assignments" element={<TeacherAssignments />} />
+                <Route path="assignments/create" element={<TeacherCreateAssignment />} />
+                <Route path="assignments/:assignmentId/submissions" element={<TeacherAssignmentSubmissions />} />
+              </Route>
+              
+              <Route path="/student" element={<ProtectedRoute userType="student" />}>
+                <Route path="dashboard" element={<StudentDashboard />} />
+                <Route path="courses" element={<StudentCourses />} />
+                <Route path="assignments" element={<StudentAssignments />} />
+                <Route path="assignments/:assignmentId" element={<StudentAssignmentDetail />} />
+              </Route>
+              
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </NotificationProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
