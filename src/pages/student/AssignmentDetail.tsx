@@ -6,11 +6,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { FileText, Calendar, Clock, BookOpen, MessageCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Assignment } from '@/types';
+import { Assignment, Submission } from '@/types';
 import FileUploader from '@/components/FileUploader';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { generateSubmissionNotification } from '@/services/notificationService';
@@ -30,8 +29,20 @@ const AssignmentDetail = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('details');
+  const [existingSubmission, setExistingSubmission] = useState<Submission | null>(null);
   
   useEffect(() => {
+    if (!assignmentId) {
+      console.error("No assignment ID provided");
+      toast({
+        title: 'Error',
+        description: 'Assignment not found',
+        variant: 'destructive',
+      });
+      navigate('/student/assignments');
+      return;
+    }
+    
     console.log("Assignment ID from params:", assignmentId);
     // Find assignment by id
     const foundAssignment = mockAssignments.find(a => a.id === assignmentId);
@@ -41,10 +52,26 @@ const AssignmentDetail = () => {
       // Find associated course
       const foundCourse = mockCourses.find(c => c.id === foundAssignment.courseId);
       setCourse(foundCourse);
+      
+      // Check if the student has already submitted this assignment
+      if (user) {
+        const submission = mockSubmissions.find(
+          s => s.assignmentId === assignmentId && s.studentId === user.id
+        );
+        if (submission) {
+          setExistingSubmission(submission);
+        }
+      }
     } else {
       console.error("Assignment not found for ID:", assignmentId);
+      toast({
+        title: 'Error',
+        description: 'Assignment not found',
+        variant: 'destructive',
+      });
+      navigate('/student/assignments');
     }
-  }, [assignmentId]);
+  }, [assignmentId, user, toast, navigate]);
   
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
@@ -62,7 +89,14 @@ const AssignmentDetail = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!assignment || !user) return;
+    if (!assignment || !user) {
+      toast({
+        title: 'Error',
+        description: 'Error accessing assignment or user information',
+        variant: 'destructive',
+      });
+      return;
+    }
     
     if (!selectedFile) {
       toast({
@@ -90,6 +124,8 @@ const AssignmentDetail = () => {
         fileContent,
       });
       
+      setExistingSubmission(submission);
+      
       // Create notification for the teacher
       if (course) {
         const teacherNotification = generateSubmissionNotification(
@@ -114,9 +150,6 @@ const AssignmentDetail = () => {
         title: 'Success',
         description: 'Assignment submitted successfully',
       });
-      
-      // Redirect back to assignments page
-      navigate('/student/assignments');
     } catch (error) {
       console.error('Error submitting assignment:', error);
       toast({
@@ -130,7 +163,9 @@ const AssignmentDetail = () => {
   };
   
   if (!assignment || !course) {
-    return <div>Loading...</div>;
+    return <div className="flex items-center justify-center h-64">
+      <p className="text-muted-foreground">Loading assignment details...</p>
+    </div>;
   }
   
   // Format the due date properly
@@ -150,7 +185,7 @@ const AssignmentDetail = () => {
           <h2 className="text-2xl font-bold">{assignment.title}</h2>
         </div>
         <p className="text-muted-foreground">
-          Submit your assignment here.
+          {existingSubmission ? 'Your submission details' : 'Submit your assignment here.'}
         </p>
       </div>
       
@@ -198,16 +233,50 @@ const AssignmentDetail = () => {
                 <p>{assignment.totalMarks}</p>
               </div>
               
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Label htmlFor="file">Upload File</Label>
-                  <FileUploader onFileSelect={handleFileSelect} />
+              {existingSubmission ? (
+                <div className="space-y-4 rounded-lg bg-secondary/50 p-4">
+                  <h3 className="font-medium">Your Submission</h3>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      Submitted on {format(new Date(existingSubmission.submittedAt), 'PPP')}
+                    </p>
+                    {existingSubmission.marks !== undefined ? (
+                      <p className="font-medium">
+                        Score: {existingSubmission.marks}/{assignment.totalMarks}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Not graded yet</p>
+                    )}
+                  </div>
+                  
+                  {existingSubmission.feedback && (
+                    <div className="mt-2">
+                      <h4 className="text-sm font-medium">Feedback:</h4>
+                      <p className="text-sm">{existingSubmission.feedback}</p>
+                    </div>
+                  )}
+                  
+                  <div className="mt-2">
+                    <Button variant="outline" asChild>
+                      <a href={existingSubmission.fileUrl} target="_blank" rel="noopener noreferrer">
+                        <FileText className="mr-2 h-4 w-4" />
+                        View Submitted File
+                      </a>
+                    </Button>
+                  </div>
                 </div>
-                
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Submitting...' : 'Submit Assignment'}
-                </Button>
-              </form>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <Label htmlFor="file">Upload File</Label>
+                    <FileUploader onFileSelect={handleFileSelect} />
+                  </div>
+                  
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? 'Submitting...' : 'Submit Assignment'}
+                  </Button>
+                </form>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
