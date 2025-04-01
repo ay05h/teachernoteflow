@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { mockAssignments, mockCourses, addSubmission } from '@/services/mockData';
+import { mockAssignments, mockCourses, addSubmission, mockSubmissions } from '@/services/mockData';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
