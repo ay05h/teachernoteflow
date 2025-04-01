@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { FileText, Calendar, Clock, BookOpen, MessageCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -30,6 +31,7 @@ const AssignmentDetail = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('details');
   const [existingSubmission, setExistingSubmission] = useState<Submission | null>(null);
+  const [rollNumber, setRollNumber] = useState('');
   
   useEffect(() => {
     if (!assignmentId) {
@@ -107,6 +109,15 @@ const AssignmentDetail = () => {
       return;
     }
     
+    if (!rollNumber) {
+      toast({
+        title: 'Error',
+        description: 'Please enter your roll number',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setIsSubmitting(true);
     
     try {
@@ -119,7 +130,7 @@ const AssignmentDetail = () => {
         assignmentId: assignment.id,
         studentId: user.id,
         studentName: user.name,
-        rollNumber: '001', // In a real app, this would come from the user profile
+        rollNumber: rollNumber,
         fileUrl,
         fileContent,
       });
@@ -267,6 +278,17 @@ const AssignmentDetail = () => {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="rollNumber">Roll Number</Label>
+                    <Input 
+                      id="rollNumber" 
+                      value={rollNumber} 
+                      onChange={(e) => setRollNumber(e.target.value)} 
+                      placeholder="Enter your roll number"
+                      required
+                    />
+                  </div>
+                  
                   <div>
                     <Label htmlFor="file">Upload File</Label>
                     <FileUploader onFileSelect={handleFileSelect} />
