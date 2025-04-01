@@ -1,9 +1,7 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import AssignmentDiscussion from './AssignmentDiscussion';
 import { Button } from './ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { MessageCircle } from 'lucide-react';
 
 interface TeacherAssignmentDiscussionProps {
   assignmentId: string;

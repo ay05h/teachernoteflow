@@ -1,5 +1,4 @@
-
-import { Assignment, Course, Submission } from '../types';
+import { Assignment, Course, Submission, PlagiarismCluster, Comment } from '../types';
 
 // Initialize data from localStorage or use empty arrays
 const getInitialData = <T>(key: string): T[] => {
@@ -27,6 +26,8 @@ const getInitialData = <T>(key: string): T[] => {
         ...item,
         createdAt: new Date(item.createdAt)
       }));
+    } else if (key === 'comments') {
+      return parsedData;
     }
     
     return parsedData;
@@ -41,10 +42,11 @@ const storeData = <T>(key: string, data: T[]): void => {
   localStorage.setItem(key, JSON.stringify(data));
 };
 
-// Initialize empty arrays for courses, assignments, and submissions
+// Initialize empty arrays for courses, assignments, submissions, and comments
 export let mockCourses: Course[] = getInitialData<Course>('courses');
 export let mockAssignments: Assignment[] = getInitialData<Assignment>('assignments');
 export let mockSubmissions: Submission[] = getInitialData<Submission>('submissions');
+export let mockComments: Comment[] = getInitialData<Comment>('comments') || [];
 
 // Function to add a new course
 export const addCourse = (course: Omit<Course, "id" | "teacherId" | "createdAt">): Course => {
@@ -160,6 +162,45 @@ export const getSubmissionById = (submissionId: string): Submission | undefined 
   return mockSubmissions.find(submission => submission.id === submissionId);
 };
 
+// New function to get submissions with plagiarism information for an assignment
+export const getSubmissionsWithPlagiarismInfo = (assignmentId: string) => {
+  // Get all submissions for this assignment
+  const submissions = getSubmissionsForAssignment(assignmentId);
+  
+  // Group submissions by plagiarism content for clustering
+  const contentMap = new Map<string, Submission[]>();
+  
+  submissions.forEach(submission => {
+    if (submission.fileContent && submission.plagiarismScore && submission.plagiarismScore > 30) {
+      // Use fileContent as a key for identical content
+      const key = submission.fileContent;
+      if (!contentMap.has(key)) {
+        contentMap.set(key, []);
+      }
+      contentMap.get(key)?.push(submission);
+    }
+  });
+  
+  // Create plagiarism clusters
+  const plagiarismClusters: PlagiarismCluster[] = [];
+  
+  contentMap.forEach((similarSubmissions, contentHash) => {
+    // Only create clusters for submissions that have more than one student
+    if (similarSubmissions.length > 1) {
+      const studentNames = similarSubmissions.map(sub => sub.studentName);
+      const plagiarismScore = similarSubmissions[0].plagiarismScore || 0;
+      
+      plagiarismClusters.push({
+        plagiarismScore,
+        studentNames,
+        contentHash
+      });
+    }
+  });
+  
+  return { submissions, plagiarismClusters };
+};
+
 // Function to update a submission (for grading)
 export const updateSubmission = (submissionId: string, updates: Partial<Submission>): Submission | undefined => {
   try {
@@ -215,6 +256,24 @@ export const deleteCourse = (courseId: string): boolean => {
     console.error("Error deleting course:", error);
     return false;
   }
+};
+
+// Function to add a comment to an assignment
+export const addComment = (comment: Omit<Comment, "id" | "createdAt">): Comment => {
+  const newComment: Comment = {
+    ...comment,
+    id: `c${Date.now()}`, // Generate unique ID using timestamp
+    createdAt: new Date()
+  };
+  
+  mockComments = [...mockComments, newComment];
+  storeData('comments', mockComments);
+  return newComment;
+};
+
+// Function to get comments for an assignment
+export const getCommentsForAssignment = (assignmentId: string): Comment[] => {
+  return mockComments.filter(comment => comment.assignmentId === assignmentId);
 };
 
 // Simple function to generate random plagiarism score - no longer used

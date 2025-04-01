@@ -3,6 +3,7 @@ import { Circle } from 'lucide-react';
 
 interface PlagiarismMeterProps {
   score: number;
+  value?: number; // Add backward compatibility for existing code
   size?: 'sm' | 'md' | 'lg' | 'large';
   showLabel?: boolean;
 }
@@ -10,7 +11,10 @@ interface PlagiarismMeterProps {
 /**
  * A component to visualize plagiarism scores
  */
-const PlagiarismMeter = ({ score, size = 'md', showLabel = true }: PlagiarismMeterProps) => {
+const PlagiarismMeter = ({ score, value, size = 'md', showLabel = true }: PlagiarismMeterProps) => {
+  // Use score prop or fallback to value prop for backward compatibility
+  const actualScore = score ?? value ?? 0;
+  
   // Determine the size class based on prop
   let sizeClass = '';
   switch (size) {
@@ -30,9 +34,9 @@ const PlagiarismMeter = ({ score, size = 'md', showLabel = true }: PlagiarismMet
 
   // Determine color based on plagiarism score
   let color = '';
-  if (score <= 30) {
+  if (actualScore <= 30) {
     color = 'text-green-500';
-  } else if (score <= 60) {
+  } else if (actualScore <= 60) {
     color = 'text-amber-500';
   } else {
     color = 'text-red-500';
@@ -41,7 +45,7 @@ const PlagiarismMeter = ({ score, size = 'md', showLabel = true }: PlagiarismMet
   return (
     <div className="flex items-center">
       <Circle className={`${sizeClass} ${color} fill-current`} />
-      {showLabel && <span className="ml-2">{score}%</span>}
+      {showLabel && <span className="ml-2">{actualScore}%</span>}
     </div>
   );
 };
