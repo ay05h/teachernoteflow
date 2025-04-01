@@ -26,13 +26,27 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   
-  // Load notifications from localStorage on mount
+  // Load notifications from localStorage on mount or when user changes
   useEffect(() => {
     if (user) {
       const storedNotifications = localStorage.getItem(`notifications-${user.id}`);
       if (storedNotifications) {
-        setNotifications(JSON.parse(storedNotifications));
+        try {
+          const parsedNotifications = JSON.parse(storedNotifications);
+          // Convert string dates back to Date objects
+          const processedNotifications = parsedNotifications.map((n: any) => ({
+            ...n,
+            createdAt: new Date(n.createdAt)
+          }));
+          setNotifications(processedNotifications);
+        } catch (error) {
+          console.error('Error parsing notifications from localStorage:', error);
+          setNotifications([]);
+        }
       }
+    } else {
+      // Clear notifications when user is not logged in
+      setNotifications([]);
     }
   }, [user]);
   
@@ -46,11 +60,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const unreadCount = notifications.filter(n => !n.isRead).length;
   
   const addNotification = (notification: Omit<Notification, 'id' | 'createdAt' | 'isRead'>) => {
-    if (user) {
+    // Only add notifications for the current user
+    if (user && (notification.userId === user.id || notification.userId === user.type)) {
       const newNotification: Notification = {
         ...notification,
         id: Math.random().toString(36).substring(2, 9),
-        userId: user.id,
         isRead: false,
         createdAt: new Date(),
       };

@@ -1,384 +1,198 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Download,
-  FileText,
-  Upload
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { mockAssignments, mockCourses, mockSubmissions, addSubmission } from '@/services/mockData';
-import { format } from 'date-fns';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import FileUploader from '@/components/FileUploader';
-import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/hooks/use-toast';
-import PlagiarismMeter from '@/components/PlagiarismMeter';
-import { Badge } from '@/components/ui/badge';
+import { mockAssignments, mockCourses, addSubmission } from '@/services/mockData';
 import { useAuth } from '@/contexts/AuthContext';
-import { AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { FileText, Calendar, Clock, BookOpen } from 'lucide-react';
+import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import { Assignment } from '@/types';
+import FileUploader from '@/components/FileUploader';
+import { useNotifications } from '@/contexts/NotificationContext';
+import { generateSubmissionNotification } from '@/services/notificationService';
 
-const StudentAssignmentDetail = () => {
-  const { assignmentId } = useParams();
+const AssignmentDetail = () => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { user } = useAuth();
+  const { toast } = useToast();
+  const { addNotification } = useNotifications();
   
-  const [assignment, setAssignment] = useState(mockAssignments.find(a => a.id === assignmentId));
-  const [course, setCourse] = useState(assignment ? mockCourses.find(c => c.id === assignment.courseId) : null);
-  const [submission, setSubmission] = useState(
-    mockSubmissions.find(s => s.assignmentId === assignmentId && s.studentId === user?.id)
-  );
+  const [assignment, setAssignment] = useState<Assignment | null>(null);
+  const [course, setCourse] = useState<any>(null);
+  const [fileContent, setFileContent] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   useEffect(() => {
-    const currentAssignment = mockAssignments.find(a => a.id === assignmentId);
-    setAssignment(currentAssignment);
-    
-    if (currentAssignment) {
-      setCourse(mockCourses.find(c => c.id === currentAssignment.courseId));
+    // Find assignment by id
+    const foundAssignment = mockAssignments.find(a => a.id === id);
+    if (foundAssignment) {
+      setAssignment(foundAssignment);
+      
+      // Find associated course
+      const foundCourse = mockCourses.find(c => c.id === foundAssignment.courseId);
+      setCourse(foundCourse);
     }
-    
-    setSubmission(mockSubmissions.find(
-      s => s.assignmentId === assignmentId && s.studentId === user?.id
-    ));
-  }, [assignmentId, user?.id]);
+  }, [id]);
   
-  const [rollNumber, setRollNumber] = useState(submission?.rollNumber || '');
-  const [file, setFile] = useState<File | null>(null);
-  const [fileContent, setFileContent] = useState<string>('');
-  const [isFileValid, setIsFileValid] = useState(true);
-  const [fileError, setFileError] = useState<string | null>(null);
-  
-  const handleFileRead = (file: File) => {
-    if (!file) {
-      setIsFileValid(false);
-      setFileError('No file selected');
-      return;
-    }
+  const handleFileSelect = (file: File) => {
+    setSelectedFile(file);
     
-    if (!file.name.toLowerCase().endsWith('.txt')) {
-      setIsFileValid(false);
-      setFileError('Only .txt files are allowed for plagiarism detection');
-      return;
-    }
-    
+    // Read file content for plagiarism detection
     const reader = new FileReader();
     reader.onload = (e) => {
-      const text = e.target?.result as string;
-      setFileContent(text);
-      setIsFileValid(true);
-      setFileError(null);
+      if (e.target?.result) {
+        setFileContent(e.target.result.toString());
+      }
     };
-    
-    reader.onerror = () => {
-      setIsFileValid(false);
-      setFileError('Error reading the file');
-    };
-    
     reader.readAsText(file);
   };
   
-  useEffect(() => {
-    if (file) {
-      handleFileRead(file);
-    }
-  }, [file]);
-  
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!rollNumber || !file || !isFileValid) {
+    if (!assignment || !user) return;
+    
+    if (!selectedFile) {
       toast({
         title: 'Error',
-        description: fileError || 'Please enter your roll number and upload a valid text file',
+        description: 'Please select a file to submit',
         variant: 'destructive',
       });
       return;
     }
     
-    if (!user) {
+    setIsSubmitting(true);
+    
+    try {
+      // In a real app, we would upload the file to a server
+      // For this demo, we'll just use a placeholder URL
+      const fileUrl = URL.createObjectURL(selectedFile);
+      
+      // Add submission to mock data
+      const submission = addSubmission({
+        assignmentId: assignment.id,
+        studentId: user.id,
+        studentName: user.name,
+        rollNumber: '001', // In a real app, this would come from the user profile
+        fileUrl,
+        fileContent,
+      });
+      
+      // Create notification for the teacher
+      if (course) {
+        const teacherNotification = generateSubmissionNotification(
+          submission, 
+          assignment,
+          user,
+          true
+        );
+        addNotification(teacherNotification);
+        
+        // Notification for the student who submitted
+        const studentNotification = generateSubmissionNotification(
+          submission,
+          assignment,
+          user,
+          false
+        );
+        addNotification(studentNotification);
+      }
+      
+      toast({
+        title: 'Success',
+        description: 'Assignment submitted successfully',
+      });
+      
+      // Redirect back to assignments page
+      navigate('/student/assignments');
+    } catch (error) {
+      console.error('Error submitting assignment:', error);
       toast({
         title: 'Error',
-        description: 'You must be logged in to submit an assignment',
+        description: 'There was an error submitting your assignment',
         variant: 'destructive',
       });
-      return;
-    }
-    
-    const newSubmission = addSubmission({
-      assignmentId: assignmentId || '',
-      studentId: user.id,
-      studentName: user.name,
-      fileUrl: URL.createObjectURL(file),
-      rollNumber: rollNumber,
-      fileContent: fileContent,
-    });
-    
-    toast({
-      title: 'Success',
-      description: 'Assignment submitted successfully',
-    });
-    
-    setSubmission(newSubmission);
-  };
-  
-  const handleDownloadAssignment = () => {
-    if (assignment && assignment.fileUrl) {
-      const anchor = document.createElement('a');
-      anchor.href = assignment.fileUrl;
-      
-      const fileName = `assignment_${assignment.title.replace(/\s+/g, '_')}.txt`;
-      anchor.download = fileName;
-      
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      
-      toast({
-        title: "Download Started",
-        description: "Downloading assignment file",
-      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
-  const handleDownloadSubmission = () => {
-    if (submission) {
-      const anchor = document.createElement('a');
-      anchor.href = submission.fileUrl;
-      
-      const fileName = `submission_${submission.rollNumber.replace(/\s+/g, '_')}.txt`;
-      anchor.download = fileName;
-      
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      
-      toast({
-        title: "Download Started",
-        description: "Downloading your submission file",
-      });
-    }
-  };
-  
-  const getTimeStatus = () => {
-    const now = new Date();
-    const dueDateObj = new Date(assignment.dueDate);
-    
-    if (now > dueDateObj) {
-      return { label: 'Overdue', variant: 'destructive' as const };
-    }
-    
-    const diffTime = dueDateObj.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays <= 2) {
-      return { label: 'Due Soon', variant: 'warning' as const };
-    }
-    
-    return { label: `${diffDays} days left`, variant: 'outline' as const };
-  };
-  
-  const timeStatus = getTimeStatus();
-
   if (!assignment || !course) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <FileText className="h-12 w-12 text-muted-foreground" />
-        <h3 className="mt-4 text-lg font-medium">Assignment not found</h3>
-        <p className="text-muted-foreground">The assignment you're looking for doesn't exist.</p>
-        <Button className="mt-4" onClick={() => navigate('/student/assignments')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Assignments
-        </Button>
-      </div>
-    );
+    return <div>Loading...</div>;
   }
-
+  
+  // Format the due date properly
+  const dueDate = assignment.dueDate instanceof Date 
+    ? assignment.dueDate 
+    : new Date(assignment.dueDate);
+  
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <Button 
-          variant="outline" 
-          className="w-fit"
-          onClick={() => navigate('/student/assignments')}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Assignments
-        </Button>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <h2 className="text-3xl font-bold tracking-tight">{assignment.title}</h2>
-          {submission ? (
-            <Badge variant="success">Submitted</Badge>
-          ) : (
-            <Badge variant={timeStatus.variant}>{timeStatus.label}</Badge>
-          )}
+      <div>
+        <div className="flex items-center space-x-2">
+          <Button variant="ghost" onClick={() => navigate('/student/assignments')}>
+            <BookOpen className="w-4 h-4 mr-2" />
+            Assignments
+          </Button>
+          <span>/</span>
+          <h2 className="text-2xl font-bold">{assignment.title}</h2>
         </div>
         <p className="text-muted-foreground">
-          Course: {course.title} | Due: {format(new Date(assignment.dueDate), 'MMMM dd, yyyy')} | 
-          Total Marks: {assignment.totalMarks}
+          Submit your assignment here.
         </p>
       </div>
       
       <Card>
         <CardHeader>
-          <CardTitle>Assignment Details</CardTitle>
-          <CardDescription>{course.code} - {course.title}</CardDescription>
+          <CardTitle>{assignment.title}</CardTitle>
+          <CardDescription>
+            {course.title} ({course.code})
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <h3 className="font-medium">Description</h3>
-            <p className="mt-1 text-muted-foreground">{assignment.description}</p>
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <FileText className="w-4 h-4" />
+              <span>Description:</span>
+            </div>
+            <p>{assignment.description}</p>
           </div>
           
-          {assignment.fileUrl && (
-            <div>
-              <h3 className="font-medium">Assignment File</h3>
-              <Button 
-                variant="outline" 
-                className="mt-2" 
-                onClick={handleDownloadAssignment}
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Download Assignment
-              </Button>
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <Calendar className="w-4 h-4" />
+              <span>Due Date:</span>
             </div>
-          )}
+            <p>{format(dueDate, 'PPP')}</p>
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <Clock className="w-4 h-4" />
+              <span>Total Marks:</span>
+            </div>
+            <p>{assignment.totalMarks}</p>
+          </div>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="file">Upload File</Label>
+              <FileUploader onFileSelect={handleFileSelect} />
+            </div>
+            
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Submitting...' : 'Submit Assignment'}
+            </Button>
+          </form>
         </CardContent>
       </Card>
-      
-      {submission ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Your Submission</CardTitle>
-            <CardDescription>
-              Submitted on {format(new Date(submission.submittedAt), 'MMMM dd, yyyy')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <h3 className="font-medium">Roll Number</h3>
-                <p className="mt-1 text-muted-foreground">{submission.rollNumber}</p>
-              </div>
-              <div>
-                <h3 className="font-medium">Submission File</h3>
-                <Button 
-                  variant="outline" 
-                  className="mt-1" 
-                  onClick={handleDownloadSubmission}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Download Your Submission
-                </Button>
-              </div>
-            </div>
-            
-            <Separator />
-            
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-medium">Plagiarism Detection</h3>
-                <div className="mt-2 flex items-center gap-4">
-                  <PlagiarismMeter score={submission.plagiarismScore || 0} size="lg" />
-                  <div>
-                    <p className="font-bold text-xl">{submission.plagiarismScore}%</p>
-                    <p className="text-muted-foreground text-sm">
-                      {submission.plagiarismScore && submission.plagiarismScore > 50 
-                        ? 'High similarity detected with other submissions' 
-                        : submission.plagiarismScore > 0
-                          ? 'Low similarity with other submissions'
-                          : 'No similarity with other submissions'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              {submission.marks !== undefined && (
-                <>
-                  <Separator />
-                  <div>
-                    <h3 className="font-medium">Grading</h3>
-                    <div className="mt-2">
-                      <p className="font-bold text-xl">
-                        {submission.marks} / {assignment.totalMarks}
-                        <span className="ml-2 text-sm font-normal text-muted-foreground">
-                          ({Math.round((submission.marks / assignment.totalMarks) * 100)}%)
-                        </span>
-                      </p>
-                      {submission.feedback && (
-                        <div className="mt-2">
-                          <h4 className="text-sm font-medium">Feedback:</h4>
-                          <p className="text-muted-foreground mt-1">{submission.feedback}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Submit Assignment</CardTitle>
-            <CardDescription>
-              Upload your assignment file below before the due date.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Alert className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Important</AlertTitle>
-              <AlertDescription>
-                Only .txt files are accepted for plagiarism detection. Your submission will be checked against previous submissions to detect potential plagiarism.
-              </AlertDescription>
-            </Alert>
-            
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="rollNumber">Your Roll Number</Label>
-                  <Input
-                    id="rollNumber"
-                    value={rollNumber}
-                    onChange={(e) => setRollNumber(e.target.value)}
-                    placeholder="Enter your roll number"
-                    required
-                  />
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label>Assignment File</Label>
-                  <FileUploader 
-                    onFileSelect={(selectedFile) => setFile(selectedFile)} 
-                    accept=".txt" 
-                    label="Upload Text File"
-                  />
-                  {fileError && (
-                    <p className="text-xs text-destructive">{fileError}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    Only plain text (.txt) files are accepted
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex justify-end">
-                <Button type="submit" disabled={!isFileValid}>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Submit Assignment
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };
 
-export default StudentAssignmentDetail;
+export default AssignmentDetail;

@@ -14,11 +14,16 @@ import { mockCourses, addAssignment } from '@/services/mockData';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import FileUploader from '@/components/FileUploader';
+import { useNotifications } from '@/contexts/NotificationContext';
+import { generateAssignmentCreatedNotification } from '@/services/notificationService';
+import { useAuth } from '@/contexts/AuthContext';
 
 const TeacherCreateAssignment = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { addNotification } = useNotifications();
+  const { user } = useAuth();
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -63,6 +68,19 @@ const TeacherCreateAssignment = () => {
       title: 'Success',
       description: 'Assignment created successfully',
     });
+
+    // Create notification for the teacher
+    const course = mockCourses.find(c => c.id === courseId);
+    if (course) {
+      // Notification for the teacher who created the assignment
+      const teacherNotification = generateAssignmentCreatedNotification(newAssignment, course, true);
+      addNotification(teacherNotification);
+      
+      // Notification for students (in a real app this would be sent to enrolled students)
+      // For demo, we'll create a general notification that would be filtered by student IDs in a real app
+      const studentNotification = generateAssignmentCreatedNotification(newAssignment, course, false);
+      addNotification(studentNotification);
+    }
     
     // Redirect to assignments page
     navigate('/teacher/assignments');
