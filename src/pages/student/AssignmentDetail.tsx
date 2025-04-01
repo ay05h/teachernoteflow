@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { mockAssignments, mockCourses, addSubmission } from '@/services/mockData';
@@ -6,13 +7,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { FileText, Calendar, Clock, BookOpen } from 'lucide-react';
+import { FileText, Calendar, Clock, BookOpen, MessageCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Assignment } from '@/types';
 import FileUploader from '@/components/FileUploader';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { generateSubmissionNotification } from '@/services/notificationService';
+import AssignmentDiscussion from '@/components/AssignmentDiscussion';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 const AssignmentDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +29,7 @@ const AssignmentDetail = () => {
   const [fileContent, setFileContent] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('details');
   
   useEffect(() => {
     // Find assignment by id
@@ -147,50 +151,73 @@ const AssignmentDetail = () => {
         </p>
       </div>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>{assignment.title}</CardTitle>
-          <CardDescription>
-            {course.title} ({course.code})
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <FileText className="w-4 h-4" />
-              <span>Description:</span>
+      <Tabs defaultValue="details" onValueChange={setActiveTab} value={activeTab}>
+        <TabsList>
+          <TabsTrigger value="details">Assignment Details</TabsTrigger>
+          <TabsTrigger value="discussion">
+            <div className="flex items-center">
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Community Discussion
             </div>
-            <p>{assignment.description}</p>
-          </div>
-          
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <Calendar className="w-4 h-4" />
-              <span>Due Date:</span>
-            </div>
-            <p>{format(dueDate, 'PPP')}</p>
-          </div>
-          
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <Clock className="w-4 h-4" />
-              <span>Total Marks:</span>
-            </div>
-            <p>{assignment.totalMarks}</p>
-          </div>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="file">Upload File</Label>
-              <FileUploader onFileSelect={handleFileSelect} />
-            </div>
-            
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Submitting...' : 'Submit Assignment'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="details">
+          <Card>
+            <CardHeader>
+              <CardTitle>{assignment.title}</CardTitle>
+              <CardDescription>
+                {course.title} ({course.code})
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <FileText className="w-4 h-4" />
+                  <span>Description:</span>
+                </div>
+                <p>{assignment.description}</p>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Calendar className="w-4 h-4" />
+                  <span>Due Date:</span>
+                </div>
+                <p>{format(dueDate, 'PPP')}</p>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Clock className="w-4 h-4" />
+                  <span>Total Marks:</span>
+                </div>
+                <p>{assignment.totalMarks}</p>
+              </div>
+              
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <Label htmlFor="file">Upload File</Label>
+                  <FileUploader onFileSelect={handleFileSelect} />
+                </div>
+                
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? 'Submitting...' : 'Submit Assignment'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="discussion">
+          <AssignmentDiscussion 
+            assignmentId={assignment.id} 
+            assignmentTitle={assignment.title}
+            courseId={assignment.courseId}
+            teacherId={course.teacherId}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

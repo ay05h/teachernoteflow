@@ -1,4 +1,3 @@
-
 export type UserType = 'teacher' | 'student' | null;
 
 export interface User {
@@ -67,3 +66,13 @@ export type BadgeVariant =
   | "outline" 
   | "success"  // Added for submitted assignments
   | "warning"; // Added for due soon assignments
+
+export interface Comment {
+  id: string;
+  assignmentId: string;
+  userId: string;
+  userName: string;
+  userType: UserType;
+  content: string;
+  createdAt: Date;
+}
