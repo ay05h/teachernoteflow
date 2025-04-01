@@ -2,9 +2,9 @@
 import { Circle } from 'lucide-react';
 
 interface PlagiarismMeterProps {
-  score: number;
-  value?: number; // Add backward compatibility for existing code
-  size?: 'sm' | 'md' | 'lg' | 'large';
+  score?: number;
+  value?: number; // For backward compatibility
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'large';
   showLabel?: boolean;
 }
 
@@ -18,6 +18,9 @@ const PlagiarismMeter = ({ score, value, size = 'md', showLabel = true }: Plagia
   // Determine the size class based on prop
   let sizeClass = '';
   switch (size) {
+    case 'xs': // Added xs size support
+      sizeClass = 'h-2 w-2';
+      break;
     case 'sm':
       sizeClass = 'h-3 w-3';
       break;

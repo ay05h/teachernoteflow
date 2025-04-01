@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,16 +36,13 @@ const TeacherAssignmentSubmissions = () => {
   useEffect(() => {
     if (!assignmentId) return;
     
-    // Find the assignment
     const foundAssignment = mockAssignments.find(a => a.id === assignmentId);
     if (foundAssignment) {
       setAssignment(foundAssignment);
       
-      // Find the course
       const foundCourse = mockCourses.find(c => c.id === foundAssignment.courseId);
       setCourse(foundCourse);
       
-      // Get all submissions for this assignment with plagiarism info
       const { submissions, plagiarismClusters } = getSubmissionsWithPlagiarismInfo(assignmentId);
       setSubmissions(submissions);
       setPlagiarismClusters(plagiarismClusters);
@@ -64,27 +60,22 @@ const TeacherAssignmentSubmissions = () => {
     if (!selectedSubmission || marks === '') return;
     
     try {
-      // Update the submission with marks and feedback
       const updatedSubmission = updateSubmission(selectedSubmission.id, {
         marks: Number(marks),
         feedback,
       });
       
-      // Update the local state
       setSubmissions(prev => prev.map(sub => 
         sub.id === updatedSubmission.id ? updatedSubmission : sub
       ));
       
-      // Close the dialog
       setDialogOpen(false);
       
-      // Show success toast
       toast({
         title: "Grades saved successfully",
         description: `Marks: ${marks}, Feedback saved for ${selectedSubmission.studentName}`,
       });
       
-      // Create notification for the student
       if (user) {
         addNotification({
           userId: selectedSubmission.studentId,
@@ -142,7 +133,7 @@ const TeacherAssignmentSubmissions = () => {
                   <Collapsible key={index} className="border rounded-lg p-4">
                     <CollapsibleTrigger className="flex items-center justify-between w-full">
                       <div className="flex items-center">
-                        <PlagiarismMeter value={cluster.plagiarismScore} size="sm" />
+                        <PlagiarismMeter score={cluster.plagiarismScore} size="sm" />
                         <span className="ml-2">
                           {cluster.studentNames.length} student{cluster.studentNames.length !== 1 ? 's' : ''} with similar submissions
                         </span>
@@ -199,7 +190,7 @@ const TeacherAssignmentSubmissions = () => {
                         </div>
                         {submission.plagiarismScore > 0 && (
                           <div className="flex items-center mt-1">
-                            <PlagiarismMeter value={submission.plagiarismScore} size="xs" />
+                            <PlagiarismMeter score={submission.plagiarismScore} size="sm" />
                             <span className="text-xs ml-1">
                               {submission.plagiarismScore}% similar to other submissions
                             </span>
