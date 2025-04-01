@@ -18,7 +18,7 @@ import AssignmentDiscussion from '@/components/AssignmentDiscussion';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 const AssignmentDetail = () => {
-  const { id } = useParams<{ id: string }>();
+  const { assignmentId } = useParams<{ assignmentId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -32,16 +32,19 @@ const AssignmentDetail = () => {
   const [activeTab, setActiveTab] = useState<string>('details');
   
   useEffect(() => {
+    console.log("Assignment ID from params:", assignmentId);
     // Find assignment by id
-    const foundAssignment = mockAssignments.find(a => a.id === id);
+    const foundAssignment = mockAssignments.find(a => a.id === assignmentId);
     if (foundAssignment) {
       setAssignment(foundAssignment);
       
       // Find associated course
       const foundCourse = mockCourses.find(c => c.id === foundAssignment.courseId);
       setCourse(foundCourse);
+    } else {
+      console.error("Assignment not found for ID:", assignmentId);
     }
-  }, [id]);
+  }, [assignmentId]);
   
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
