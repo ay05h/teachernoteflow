@@ -11,7 +11,7 @@ interface FileUploaderProps {
 
 const FileUploader = ({
   onFileSelect,
-  accept = '.pdf',
+  accept = '.pdf,.txt',
   maxSize = 10,
   label = 'Upload File',
 }: FileUploaderProps) => {
@@ -149,7 +149,7 @@ const FileUploader = ({
                 Drop your file here, or click to browse
               </p>
               <p className="text-xs text-foreground/50 mt-2">
-                {accept} files up to {maxSize}MB
+                PDF and TXT files up to {maxSize}MB
               </p>
             </div>
           </div>

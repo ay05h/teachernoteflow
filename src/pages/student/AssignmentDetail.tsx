@@ -78,14 +78,19 @@ const AssignmentDetail = () => {
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
     
-    // Read file content for plagiarism detection
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (e.target?.result) {
-        setFileContent(e.target.result.toString());
-      }
-    };
-    reader.readAsText(file);
+    // Only read content for TXT files for plagiarism detection
+    if (file.type === 'text/plain' || file.name.toLowerCase().endsWith('.txt')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          setFileContent(e.target.result.toString());
+        }
+      };
+      reader.readAsText(file);
+    } else {
+      // For non-text files like PDF, set empty content
+      setFileContent('');
+    }
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -292,6 +297,9 @@ const AssignmentDetail = () => {
                   <div>
                     <Label htmlFor="file">Upload File</Label>
                     <FileUploader onFileSelect={handleFileSelect} />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      You can submit PDF documents or TXT files. TXT files will be used for plagiarism checking.
+                    </p>
                   </div>
                   
                   <Button type="submit" disabled={isSubmitting}>
