@@ -64,7 +64,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (user) {
       const shouldAddNotification = 
         notification.userId === user.id || 
-        (notification.type === user.type) ||
+        (user.type === notification.type) ||
         (notification.userId === user.type);
         
       if (shouldAddNotification) {

@@ -25,6 +25,28 @@ export const generateAssignmentCreatedNotification = (
   }
 };
 
+// Generate a notification for when an assignment is edited
+export const generateAssignmentEditedNotification = (
+  assignment: Assignment,
+  course: Course,
+  forTeacher: boolean
+): Omit<Notification, 'id' | 'createdAt' | 'isRead'> => {
+  if (forTeacher) {
+    return {
+      userId: course.teacherId,
+      title: 'Assignment Updated',
+      message: `You updated assignment "${assignment.title}" for course ${course.title}.`,
+    };
+  } else {
+    return {
+      userId: 'student',
+      title: 'Assignment Updated',
+      message: `Assignment "${assignment.title}" in course ${course.title} has been updated.`,
+      type: 'student',
+    };
+  }
+};
+
 // Generate a notification for when an assignment is submitted
 export const generateSubmissionNotification = (
   submission: Submission, 
@@ -80,6 +102,18 @@ export const generateEnrollmentNotification = (
     userId: student.id,
     title: 'Course Enrollment',
     message: `You have been enrolled in ${course.title}.`,
+  };
+};
+
+// Generate a notification for when a course is created (for students)
+export const generateCourseCreatedForStudentsNotification = (
+  course: Course
+): Omit<Notification, 'id' | 'createdAt' | 'isRead'> => {
+  return {
+    userId: 'student',
+    title: 'New Course Available',
+    message: `A new course "${course.title}" (${course.code}) is now available.`,
+    type: 'student',
   };
 };
 
