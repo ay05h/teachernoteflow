@@ -15,9 +15,12 @@ export const generateAssignmentCreatedNotification = (
     };
   } else {
     return {
-      userId: 'student', // This would normally be the student ID
+      // For student notifications, use 'student' as the type rather than a specific ID
+      // This will be filtered in the context to show only to students
+      userId: 'student', 
       title: 'New Assignment',
       message: `A new assignment "${assignment.title}" has been added to course ${course.title}.`,
+      type: 'student', // Add type to help with filtering
     };
   }
 };
@@ -31,9 +34,10 @@ export const generateSubmissionNotification = (
 ): Omit<Notification, 'id' | 'createdAt' | 'isRead'> => {
   if (forTeacher) {
     return {
-      userId: 'teacher', // This would normally be the teacher ID
+      userId: assignment.courseId, // Use courseId to help with teacher lookup
       title: 'Assignment Submitted',
       message: `${student.name} has submitted assignment "${assignment.title}".`,
+      type: 'teacher', // Add type to help with filtering
     };
   } else {
     return {
@@ -85,8 +89,9 @@ export const generatePlagiarismNotification = (
   assignment: Assignment
 ): Omit<Notification, 'id' | 'createdAt' | 'isRead'> => {
   return {
-    userId: 'teacher', // This would normally be the teacher ID
+    userId: assignment.courseId, // Use courseId to help with teacher lookup
     title: 'High Plagiarism Detected',
     message: `Submission by ${submission.studentName} for "${assignment.title}" has a high plagiarism score of ${submission.plagiarismScore}%.`,
+    type: 'teacher', // Add type to help with filtering
   };
 };

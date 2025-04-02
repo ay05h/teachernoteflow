@@ -1,3 +1,4 @@
+
 export type UserType = 'teacher' | 'student' | null;
 
 export interface User {
@@ -48,6 +49,7 @@ export interface Notification {
   message: string;
   isRead: boolean;
   createdAt: Date;
+  type?: 'teacher' | 'student'; // Optional type field to help with filtering
 }
 
 // Plagiarism cluster for grouping identical content

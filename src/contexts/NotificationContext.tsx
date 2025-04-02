@@ -60,22 +60,29 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const unreadCount = notifications.filter(n => !n.isRead).length;
   
   const addNotification = (notification: Omit<Notification, 'id' | 'createdAt' | 'isRead'>) => {
-    // Only add notifications for the current user
-    if (user && (notification.userId === user.id || notification.userId === user.type)) {
-      const newNotification: Notification = {
-        ...notification,
-        id: Math.random().toString(36).substring(2, 9),
-        isRead: false,
-        createdAt: new Date(),
-      };
-      
-      setNotifications(prev => [newNotification, ...prev]);
-      
-      // Show toast notification
-      toast({
-        title: notification.title,
-        description: notification.message,
-      });
+    // Only add notifications for the current user based on ID or type
+    if (user) {
+      const shouldAddNotification = 
+        notification.userId === user.id || 
+        (notification.type === user.type) ||
+        (notification.userId === user.type);
+        
+      if (shouldAddNotification) {
+        const newNotification: Notification = {
+          ...notification,
+          id: Math.random().toString(36).substring(2, 9),
+          isRead: false,
+          createdAt: new Date(),
+        };
+        
+        setNotifications(prev => [newNotification, ...prev]);
+        
+        // Show toast notification
+        toast({
+          title: notification.title,
+          description: notification.message,
+        });
+      }
     }
   };
   
