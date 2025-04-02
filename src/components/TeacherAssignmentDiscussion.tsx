@@ -4,10 +4,10 @@ import AssignmentDiscussion from './AssignmentDiscussion';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { getSubmissionsWithPlagiarismInfo } from '@/services/mockData';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from './ui/chart';
-import { BarChart, Bar, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from './ui/chart';
+import { BarChart, Bar, ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Users } from 'lucide-react';
 import PlagiarismMeter from './PlagiarismMeter';
 
 interface TeacherAssignmentDiscussionProps {
@@ -67,6 +67,10 @@ const TeacherAssignmentDiscussion: React.FC<TeacherAssignmentDiscussionProps> = 
   const COLORS = ['#22c55e', '#eab308', '#ef4444'];
   const STATUS_COLORS = ['#3b82f6', '#94a3b8'];
   
+  const formatPieChartLabel = ({ name, percent }: { name: string; percent: number }) => {
+    return `${name}: ${(percent * 100).toFixed(0)}%`;
+  };
+  
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -77,28 +81,23 @@ const TeacherAssignmentDiscussion: React.FC<TeacherAssignmentDiscussionProps> = 
       </div>
       
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
+        <Card className="h-full">
           <CardHeader>
             <CardTitle>Submission Status</CardTitle>
             <CardDescription>
-              {submissionStats.totalSubmissions} submissions received
+              {submissionStats.totalSubmissions} out of 20 submissions received
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[200px]">
-              <ChartContainer
-                config={{
-                  submitted: { label: 'Submitted' },
-                  notSubmitted: { label: 'Not Submitted' }
-                }}
-              >
+            <div className="h-[250px] flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={submissionStatusData}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    label={formatPieChartLabel}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
@@ -107,14 +106,23 @@ const TeacherAssignmentDiscussion: React.FC<TeacherAssignmentDiscussionProps> = 
                       <Cell key={`cell-${index}`} fill={STATUS_COLORS[index % STATUS_COLORS.length]} />
                     ))}
                   </Pie>
-                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Tooltip 
+                    formatter={(value, name) => [`${value} students`, name]}
+                    contentStyle={{ background: 'var(--background)', border: '1px solid var(--border)' }}
+                  />
+                  <Legend 
+                    layout="horizontal" 
+                    verticalAlign="bottom" 
+                    align="center"
+                    formatter={(value) => <span className="text-sm text-muted-foreground">{value}</span>}
+                  />
                 </PieChart>
-              </ChartContainer>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="h-full">
           <CardHeader>
             <CardTitle>Plagiarism Levels</CardTitle>
             <CardDescription>
@@ -122,23 +130,30 @@ const TeacherAssignmentDiscussion: React.FC<TeacherAssignmentDiscussionProps> = 
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[200px]">
-              <ChartContainer
-                config={{
-                  low: { label: 'Low' },
-                  medium: { label: 'Medium' },
-                  high: { label: 'High' }
-                }}
-              >
-                <BarChart data={plagiarismData}>
-                  <Bar dataKey="value" fill="hsl(var(--primary))">
+            <div className="h-[250px] flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={plagiarismData} layout="vertical">
+                  <Tooltip 
+                    formatter={(value, name) => [`${value} submissions`, name]}
+                    contentStyle={{ background: 'var(--background)', border: '1px solid var(--border)' }}
+                  />
+                  <Legend 
+                    layout="horizontal"
+                    verticalAlign="bottom"
+                    align="center"
+                    formatter={(value) => <span className="text-sm text-muted-foreground">{value}</span>}
+                  />
+                  <Bar 
+                    dataKey="value" 
+                    minPointSize={5} 
+                    barSize={30}
+                  >
                     {plagiarismData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Bar>
-                  <ChartTooltip content={<ChartTooltipContent />} />
                 </BarChart>
-              </ChartContainer>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
@@ -147,7 +162,10 @@ const TeacherAssignmentDiscussion: React.FC<TeacherAssignmentDiscussionProps> = 
       {plagiarismClusters.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Potential Plagiarism Clusters</CardTitle>
+            <CardTitle className="flex items-center">
+              <Users className="h-5 w-5 mr-2" />
+              Plagiarism Clusters
+            </CardTitle>
             <CardDescription>
               The following groups of submissions have similar or identical content.
             </CardDescription>
@@ -158,18 +176,18 @@ const TeacherAssignmentDiscussion: React.FC<TeacherAssignmentDiscussionProps> = 
                 <CollapsibleTrigger className="flex items-center justify-between w-full">
                   <div className="flex items-center">
                     <PlagiarismMeter score={cluster.plagiarismScore} size="sm" />
-                    <span className="ml-2">
-                      {cluster.studentNames.length} student{cluster.studentNames.length !== 1 ? 's' : ''} with similar submissions
+                    <span className="ml-2 font-medium">
+                      Cluster #{index + 1}: {cluster.plagiarismScore}% similarity between {cluster.studentNames.length} submissions
                     </span>
                   </div>
                   <ChevronDown className="h-4 w-4" />
                 </CollapsibleTrigger>
-                <CollapsibleContent className="mt-4">
+                <CollapsibleContent className="mt-4 pl-8">
                   <div className="space-y-2">
-                    <p className="font-medium">Students involved:</p>
-                    <ul className="list-disc pl-6">
+                    <p className="font-medium text-muted-foreground">Students involved:</p>
+                    <ul className="list-disc pl-6 space-y-1">
                       {cluster.studentNames.map((name: string, i: number) => (
-                        <li key={i}>{name}</li>
+                        <li key={i} className="text-sm">{name}</li>
                       ))}
                     </ul>
                   </div>

@@ -60,29 +60,38 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const unreadCount = notifications.filter(n => !n.isRead).length;
   
   const addNotification = (notification: Omit<Notification, 'id' | 'createdAt' | 'isRead'>) => {
-    // Only add notifications for the current user based on ID or type
-    if (user) {
-      const shouldAddNotification = 
-        notification.userId === user.id || 
-        (user.type === notification.type) ||
-        (notification.userId === user.type);
-        
-      if (shouldAddNotification) {
-        const newNotification: Notification = {
-          ...notification,
-          id: Math.random().toString(36).substring(2, 9),
-          isRead: false,
-          createdAt: new Date(),
-        };
-        
-        setNotifications(prev => [newNotification, ...prev]);
-        
-        // Show toast notification
-        toast({
-          title: notification.title,
-          description: notification.message,
-        });
-      }
+    if (!user) return;
+    
+    let shouldAddNotification = false;
+    
+    // Case 1: Direct match on userId
+    if (notification.userId === user.id) {
+      shouldAddNotification = true;
+    }
+    // Case 2: Type-based routing (student/teacher notifications)
+    else if (notification.type && notification.type === user.type) {
+      shouldAddNotification = true;
+    }
+    // Case 3: Course/classroom routing (using courseId as userId for teacher notifications)
+    else if (user.type === 'teacher' && notification.type === 'teacher') {
+      shouldAddNotification = true;
+    }
+    
+    if (shouldAddNotification) {
+      const newNotification: Notification = {
+        ...notification,
+        id: Math.random().toString(36).substring(2, 9),
+        isRead: false,
+        createdAt: new Date(),
+      };
+      
+      setNotifications(prev => [newNotification, ...prev]);
+      
+      // Show toast notification
+      toast({
+        title: notification.title,
+        description: notification.message,
+      });
     }
   };
   

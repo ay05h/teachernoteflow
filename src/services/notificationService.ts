@@ -12,15 +12,14 @@ export const generateAssignmentCreatedNotification = (
       userId: course.teacherId,
       title: 'Assignment Created',
       message: `You created a new assignment "${assignment.title}" for course ${course.title}.`,
+      type: 'teacher',
     };
   } else {
     return {
-      // For student notifications, use 'student' as the type rather than a specific ID
-      // This will be filtered in the context to show only to students
       userId: 'student', 
       title: 'New Assignment',
       message: `A new assignment "${assignment.title}" has been added to course ${course.title}.`,
-      type: 'student', // Add type to help with filtering
+      type: 'student',
     };
   }
 };
@@ -36,6 +35,7 @@ export const generateAssignmentEditedNotification = (
       userId: course.teacherId,
       title: 'Assignment Updated',
       message: `You updated assignment "${assignment.title}" for course ${course.title}.`,
+      type: 'teacher',
     };
   } else {
     return {
@@ -56,16 +56,17 @@ export const generateSubmissionNotification = (
 ): Omit<Notification, 'id' | 'createdAt' | 'isRead'> => {
   if (forTeacher) {
     return {
-      userId: assignment.courseId, // Use courseId to help with teacher lookup
+      userId: assignment.courseId,
       title: 'Assignment Submitted',
       message: `${student.name} has submitted assignment "${assignment.title}".`,
-      type: 'teacher', // Add type to help with filtering
+      type: 'teacher',
     };
   } else {
     return {
       userId: student.id,
       title: 'Assignment Submitted',
       message: `You have successfully submitted assignment "${assignment.title}".`,
+      type: 'student',
     };
   }
 };
@@ -79,6 +80,7 @@ export const generateGradedNotification = (
     userId: submission.studentId,
     title: 'Assignment Graded',
     message: `Your submission for "${assignment.title}" has been graded. You received ${submission.marks} out of ${assignment.totalMarks}.`,
+    type: 'student',
   };
 };
 
@@ -90,6 +92,7 @@ export const generateCourseCreatedNotification = (
     userId: course.teacherId,
     title: 'Course Created',
     message: `You have created a new course: ${course.title}.`,
+    type: 'teacher',
   };
 };
 
@@ -102,6 +105,7 @@ export const generateEnrollmentNotification = (
     userId: student.id,
     title: 'Course Enrollment',
     message: `You have been enrolled in ${course.title}.`,
+    type: 'student',
   };
 };
 
@@ -123,9 +127,9 @@ export const generatePlagiarismNotification = (
   assignment: Assignment
 ): Omit<Notification, 'id' | 'createdAt' | 'isRead'> => {
   return {
-    userId: assignment.courseId, // Use courseId to help with teacher lookup
+    userId: assignment.courseId,
     title: 'High Plagiarism Detected',
     message: `Submission by ${submission.studentName} for "${assignment.title}" has a high plagiarism score of ${submission.plagiarismScore}%.`,
-    type: 'teacher', // Add type to help with filtering
+    type: 'teacher',
   };
 };
