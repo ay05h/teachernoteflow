@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { mockAssignments, mockCourses, addSubmission, mockSubmissions } from '@/services/mockData';
@@ -46,16 +45,13 @@ const AssignmentDetail = () => {
     }
     
     console.log("Assignment ID from params:", assignmentId);
-    // Find assignment by id
     const foundAssignment = mockAssignments.find(a => a.id === assignmentId);
     if (foundAssignment) {
       setAssignment(foundAssignment);
       
-      // Find associated course
       const foundCourse = mockCourses.find(c => c.id === foundAssignment.courseId);
       setCourse(foundCourse);
       
-      // Check if the student has already submitted this assignment
       if (user) {
         const submission = mockSubmissions.find(
           s => s.assignmentId === assignmentId && s.studentId === user.id
@@ -78,7 +74,6 @@ const AssignmentDetail = () => {
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
     
-    // Only read content for TXT files for plagiarism detection
     if (file.type === 'text/plain' || file.name.toLowerCase().endsWith('.txt')) {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -88,7 +83,6 @@ const AssignmentDetail = () => {
       };
       reader.readAsText(file);
     } else {
-      // For non-text files like PDF, set empty content
       setFileContent('');
     }
   };
@@ -126,11 +120,8 @@ const AssignmentDetail = () => {
     setIsSubmitting(true);
     
     try {
-      // In a real app, we would upload the file to a server
-      // For this demo, we'll just use a placeholder URL
       const fileUrl = URL.createObjectURL(selectedFile);
       
-      // Add submission to mock data
       const submission = addSubmission({
         assignmentId: assignment.id,
         studentId: user.id,
@@ -142,7 +133,6 @@ const AssignmentDetail = () => {
       
       setExistingSubmission(submission);
       
-      // Create notification for the teacher
       if (course) {
         const teacherNotification = generateSubmissionNotification(
           submission, 
@@ -152,7 +142,6 @@ const AssignmentDetail = () => {
         );
         addNotification(teacherNotification);
         
-        // Notification for the student who submitted
         const studentNotification = generateSubmissionNotification(
           submission,
           assignment,
@@ -184,7 +173,6 @@ const AssignmentDetail = () => {
     </div>;
   }
   
-  // Format the due date properly
   const dueDate = assignment.dueDate instanceof Date 
     ? assignment.dueDate 
     : new Date(assignment.dueDate);
@@ -296,7 +284,10 @@ const AssignmentDetail = () => {
                   
                   <div>
                     <Label htmlFor="file">Upload File</Label>
-                    <FileUploader onFileSelect={handleFileSelect} />
+                    <FileUploader 
+                      onFileSelect={handleFileSelect} 
+                      accept=".pdf,.txt"
+                    />
                     <p className="text-xs text-muted-foreground mt-1">
                       You can submit PDF documents or TXT files. TXT files will be used for plagiarism checking.
                     </p>
