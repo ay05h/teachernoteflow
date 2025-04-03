@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,14 +8,16 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { mockAssignments, mockSubmissions, mockCourses, updateSubmission, getSubmissionsWithPlagiarismInfo } from '@/services/mockData';
 import PlagiarismMeter from '@/components/PlagiarismMeter';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { CheckCircle, ChevronDown, FileText, MessageCircle } from 'lucide-react';
+import { CheckCircle, ChevronDown, FileText, MessageCircle, Users } from 'lucide-react';
 import { useNotifications } from '@/contexts/NotificationContext';
 import TeacherAssignmentDiscussion from '@/components/TeacherAssignmentDiscussion';
+import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts';
 
 const TeacherAssignmentSubmissions = () => {
   const { assignmentId } = useParams<{ assignmentId: string }>();
@@ -32,6 +35,13 @@ const TeacherAssignmentSubmissions = () => {
   const [marks, setMarks] = useState<number | ''>('');
   const [feedback, setFeedback] = useState('');
   const [activeTab, setActiveTab] = useState('submissions');
+  const [submissionStats, setSubmissionStats] = useState({
+    totalSubmissions: 0,
+    plagiarismDetected: 0,
+    lowPlagiarism: 0,
+    mediumPlagiarism: 0,
+    highPlagiarism: 0
+  });
   
   useEffect(() => {
     if (!assignmentId) return;
@@ -45,7 +55,17 @@ const TeacherAssignmentSubmissions = () => {
       
       const { submissions, plagiarismClusters } = getSubmissionsWithPlagiarismInfo(assignmentId);
       setSubmissions(submissions);
-      setPlagiarismClusters(plagiarismClusters);
+      setPlagiarismClusters(plagiarismClusters.sort((a, b) => b.plagiarismScore - a.plagiarismScore)); // Sort by plagiarism score descending
+
+      // Calculate statistics
+      const stats = {
+        totalSubmissions: submissions.length,
+        plagiarismDetected: submissions.filter(s => (s.plagiarismScore || 0) > 20).length,
+        lowPlagiarism: submissions.filter(s => (s.plagiarismScore || 0) <= 20).length,
+        mediumPlagiarism: submissions.filter(s => (s.plagiarismScore || 0) > 20 && (s.plagiarismScore || 0) <= 50).length,
+        highPlagiarism: submissions.filter(s => (s.plagiarismScore || 0) > 50).length
+      };
+      setSubmissionStats(stats);
     }
   }, [assignmentId]);
   
@@ -66,7 +86,7 @@ const TeacherAssignmentSubmissions = () => {
       });
       
       setSubmissions(prev => prev.map(sub => 
-        sub.id === updatedSubmission.id ? updatedSubmission : sub
+        sub.id === updatedSubmission?.id ? updatedSubmission : sub
       ));
       
       setDialogOpen(false);
@@ -81,6 +101,7 @@ const TeacherAssignmentSubmissions = () => {
           userId: selectedSubmission.studentId,
           title: "Assignment Graded",
           message: `Your assignment "${assignment.title}" has been graded. You received ${marks} marks.`,
+          type: "student" // Explicitly route this to student
         });
       }
     } catch (error) {
@@ -91,6 +112,45 @@ const TeacherAssignmentSubmissions = () => {
         variant: "destructive",
       });
     }
+  };
+  
+  // Generate data for the plagiarism distribution chart
+  const generatePlagiarismDistributionData = () => {
+    // Create bins for plagiarism percentage ranges (0-10, 11-20, ..., 91-100)
+    const bins = Array.from({ length: 10 }, (_, i) => ({
+      range: `${i * 10}-${(i + 1) * 10}%`,
+      count: 0,
+      percent: i * 10 // Starting percent for the range
+    }));
+    
+    // Count submissions in each bin
+    submissions.forEach(submission => {
+      const score = submission.plagiarismScore || 0;
+      const binIndex = Math.min(Math.floor(score / 10), 9); // Ensure we don't go out of bounds
+      bins[binIndex].count++;
+    });
+    
+    return bins;
+  };
+  
+  const plagiarismDistribution = generatePlagiarismDistributionData();
+  
+  const COLORS = ['#22c55e', '#eab308', '#ef4444'];
+  const STATUS_COLORS = ['#3b82f6', '#94a3b8'];
+  
+  const plagiarismData = [
+    { name: 'Low (0-20%)', value: submissionStats.lowPlagiarism },
+    { name: 'Medium (21-50%)', value: submissionStats.mediumPlagiarism },
+    { name: 'High (51-100%)', value: submissionStats.highPlagiarism }
+  ];
+  
+  const submissionStatusData = [
+    { name: 'Submitted', value: submissionStats.totalSubmissions },
+    { name: 'Not Submitted', value: 20 - submissionStats.totalSubmissions } // Assuming 20 students per class for demo
+  ];
+  
+  const formatPieChartLabel = ({ name, percent }: { name: string; percent: number }) => {
+    return `${name}: ${(percent * 100).toFixed(0)}%`;
   };
   
   if (!assignment || !course) {
@@ -120,10 +180,104 @@ const TeacherAssignmentSubmissions = () => {
         </div>
         
         <TabsContent value="submissions" className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card className="h-full">
+              <CardHeader>
+                <CardTitle>Submission Status</CardTitle>
+                <CardDescription>
+                  {submissionStats.totalSubmissions} out of 20 submissions received
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[250px] flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={submissionStatusData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={formatPieChartLabel}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {submissionStatusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={STATUS_COLORS[index % STATUS_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        formatter={(value, name) => [`${value} students`, name]}
+                        contentStyle={{ background: 'var(--background)', border: '1px solid var(--border)' }}
+                      />
+                      <Legend 
+                        layout="horizontal" 
+                        verticalAlign="bottom" 
+                        align="center"
+                        formatter={(value) => <span className="text-sm text-muted-foreground">{value}</span>}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="h-full">
+              <CardHeader>
+                <CardTitle>Plagiarism Distribution</CardTitle>
+                <CardDescription>
+                  Number of submissions by plagiarism percentage
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[250px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={plagiarismDistribution}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 30 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis 
+                        dataKey="range" 
+                        label={{ value: 'Similarity %', position: 'bottom', offset: 0 }}
+                        tick={{ fontSize: 11 }}
+                      />
+                      <YAxis 
+                        label={{ value: 'Number of Students', angle: -90, position: 'insideLeft' }}
+                        tick={{ fontSize: 11 }}
+                      />
+                      <Tooltip
+                        formatter={(value) => [`${value} submissions`, 'Count']}
+                        contentStyle={{ background: 'var(--background)', border: '1px solid var(--border)' }}
+                      />
+                      <Bar 
+                        dataKey="count" 
+                        fill="#3b82f6"
+                        name="Number of Submissions" 
+                        radius={[4, 4, 0, 0]}
+                      >
+                        {plagiarismDistribution.map((entry, index) => {
+                          // Determine color based on percentage range
+                          let color = '#22c55e'; // green for low
+                          if (entry.percent >= 50) color = '#ef4444'; // red for high
+                          else if (entry.percent >= 20) color = '#eab308'; // yellow for medium
+                          return <Cell key={`cell-${index}`} fill={color} />;
+                        })}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           {plagiarismClusters.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Potential Plagiarism Detected</CardTitle>
+                <CardTitle className="flex items-center">
+                  <Users className="h-5 w-5 mr-2" />
+                  Plagiarism Clusters
+                </CardTitle>
                 <CardDescription>
                   The following groups of submissions have similar or identical content.
                 </CardDescription>
@@ -134,18 +288,18 @@ const TeacherAssignmentSubmissions = () => {
                     <CollapsibleTrigger className="flex items-center justify-between w-full">
                       <div className="flex items-center">
                         <PlagiarismMeter score={cluster.plagiarismScore} size="sm" />
-                        <span className="ml-2">
-                          {cluster.studentNames.length} student{cluster.studentNames.length !== 1 ? 's' : ''} with similar submissions
+                        <span className="ml-2 font-medium">
+                          Cluster #{index + 1}: {cluster.plagiarismScore}% similarity between {cluster.studentNames.length} submissions
                         </span>
                       </div>
                       <ChevronDown className="h-4 w-4" />
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-4">
+                    <CollapsibleContent className="mt-4 pl-8">
                       <div className="space-y-2">
-                        <p className="font-medium">Students involved:</p>
-                        <ul className="list-disc pl-6">
+                        <p className="font-medium text-muted-foreground">Students involved:</p>
+                        <ul className="list-disc pl-6 space-y-1">
                           {cluster.studentNames.map((name: string, i: number) => (
-                            <li key={i}>{name}</li>
+                            <li key={i} className="text-sm">{name}</li>
                           ))}
                         </ul>
                       </div>

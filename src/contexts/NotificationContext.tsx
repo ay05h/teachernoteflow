@@ -64,16 +64,16 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     
     let shouldAddNotification = false;
     
-    // Case 1: Direct match on userId
-    if (notification.userId === user.id) {
+    // For teacher creating assignments/courses (send to students)
+    if (notification.type === 'student' && user.type === 'student') {
       shouldAddNotification = true;
     }
-    // Case 2: Type-based routing (student/teacher notifications)
-    else if (notification.type && notification.type === user.type) {
+    // For student activities (send to teachers)
+    else if (notification.type === 'teacher' && user.type === 'teacher') {
       shouldAddNotification = true;
     }
-    // Case 3: Course/classroom routing (using courseId as userId for teacher notifications)
-    else if (user.type === 'teacher' && notification.type === 'teacher') {
+    // Direct notifications for the specific user
+    else if (notification.userId === user.id) {
       shouldAddNotification = true;
     }
     

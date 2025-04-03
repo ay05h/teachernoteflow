@@ -1,4 +1,3 @@
-
 import * as React from "react"
 import {
   Toast,
@@ -25,6 +24,7 @@ const actionTypes = {
 
 let count = 0
 
+// Function to generate ID for toasts
 function genId() {
   count = (count + 1) % Number.MAX_SAFE_INTEGER
   return count.toString()

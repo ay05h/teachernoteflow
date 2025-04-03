@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText, Plus, Search } from 'lucide-react';
@@ -15,7 +14,6 @@ const TeacherAssignments = () => {
   const [assignments, setAssignments] = useState(mockAssignments);
   const { user } = useAuth();
   
-  // Refresh assignments when component mounts or when mockAssignments changes
   useEffect(() => {
     try {
       setAssignments(mockAssignments);
@@ -24,13 +22,11 @@ const TeacherAssignments = () => {
     }
   }, [mockAssignments]);
   
-  // Filter assignments based on search term
   const filteredAssignments = assignments.filter(assignment => 
     assignment.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     assignment.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
   
-  // Get course name by ID
   const getCourseTitle = (courseId: string) => {
     try {
       const course = mockCourses.find(c => c.id === courseId);
