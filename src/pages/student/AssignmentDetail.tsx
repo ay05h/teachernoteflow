@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
@@ -27,12 +28,18 @@ const StudentAssignmentDetail = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   
+  // Find the assignment
   const [assignment, setAssignment] = useState(mockAssignments.find(a => a.id === assignmentId));
+  
+  // Get course for this assignment
   const [course, setCourse] = useState(assignment ? mockCourses.find(c => c.id === assignment.courseId) : null);
+  
+  // Find if student has submitted this assignment
   const [submission, setSubmission] = useState(
     mockSubmissions.find(s => s.assignmentId === assignmentId && s.studentId === user?.id)
   );
   
+  // Refresh data when component mounts or when assignment changes
   useEffect(() => {
     const currentAssignment = mockAssignments.find(a => a.id === assignmentId);
     setAssignment(currentAssignment);
@@ -52,6 +59,7 @@ const StudentAssignmentDetail = () => {
   const [isFileValid, setIsFileValid] = useState(true);
   const [fileError, setFileError] = useState<string | null>(null);
   
+  // Handle file reading for text content extraction
   const handleFileRead = (file: File) => {
     if (!file) {
       setIsFileValid(false);
@@ -59,6 +67,7 @@ const StudentAssignmentDetail = () => {
       return;
     }
     
+    // Check if file is a .txt file
     if (!file.name.toLowerCase().endsWith('.txt')) {
       setIsFileValid(false);
       setFileError('Only .txt files are allowed for plagiarism detection');
@@ -81,6 +90,7 @@ const StudentAssignmentDetail = () => {
     reader.readAsText(file);
   };
   
+  // When a file is selected, read its content
   useEffect(() => {
     if (file) {
       handleFileRead(file);
@@ -90,6 +100,7 @@ const StudentAssignmentDetail = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate form
     if (!rollNumber || !file || !isFileValid) {
       toast({
         title: 'Error',
@@ -108,61 +119,41 @@ const StudentAssignmentDetail = () => {
       return;
     }
     
+    // Create new submission with text content for plagiarism detection
     const newSubmission = addSubmission({
       assignmentId: assignmentId || '',
       studentId: user.id,
       studentName: user.name,
-      fileUrl: URL.createObjectURL(file),
+      fileUrl: URL.createObjectURL(file), // In a real app, this would be a server URL
       rollNumber: rollNumber,
-      fileContent: fileContent,
+      fileContent: fileContent, // Add the text content for plagiarism detection
     });
     
+    // Show success message
     toast({
       title: 'Success',
       description: 'Assignment submitted successfully',
     });
     
+    // Update submission state
     setSubmission(newSubmission);
   };
   
-  const handleDownloadAssignment = () => {
-    if (assignment && assignment.fileUrl) {
-      const anchor = document.createElement('a');
-      anchor.href = assignment.fileUrl;
-      
-      const fileName = `assignment_${assignment.title.replace(/\s+/g, '_')}.txt`;
-      anchor.download = fileName;
-      
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      
-      toast({
-        title: "Download Started",
-        description: "Downloading assignment file",
-      });
-    }
-  };
-  
-  const handleDownloadSubmission = () => {
-    if (submission) {
-      const anchor = document.createElement('a');
-      anchor.href = submission.fileUrl;
-      
-      const fileName = `submission_${submission.rollNumber.replace(/\s+/g, '_')}.txt`;
-      anchor.download = fileName;
-      
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      
-      toast({
-        title: "Download Started",
-        description: "Downloading your submission file",
-      });
-    }
-  };
-  
+  if (!assignment || !course) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <FileText className="h-12 w-12 text-muted-foreground" />
+        <h3 className="mt-4 text-lg font-medium">Assignment not found</h3>
+        <p className="text-muted-foreground">The assignment you're looking for doesn't exist.</p>
+        <Button className="mt-4" onClick={() => navigate('/student/assignments')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Assignments
+        </Button>
+      </div>
+    );
+  }
+
+  // Calculate time status for assignment
   const getTimeStatus = () => {
     const now = new Date();
     const dueDateObj = new Date(assignment.dueDate);
@@ -182,20 +173,6 @@ const StudentAssignmentDetail = () => {
   };
   
   const timeStatus = getTimeStatus();
-
-  if (!assignment || !course) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <FileText className="h-12 w-12 text-muted-foreground" />
-        <h3 className="mt-4 text-lg font-medium">Assignment not found</h3>
-        <p className="text-muted-foreground">The assignment you're looking for doesn't exist.</p>
-        <Button className="mt-4" onClick={() => navigate('/student/assignments')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Assignments
-        </Button>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -236,11 +213,7 @@ const StudentAssignmentDetail = () => {
           {assignment.fileUrl && (
             <div>
               <h3 className="font-medium">Assignment File</h3>
-              <Button 
-                variant="outline" 
-                className="mt-2" 
-                onClick={handleDownloadAssignment}
-              >
+              <Button variant="outline" className="mt-2">
                 <Download className="mr-2 h-4 w-4" />
                 Download Assignment
               </Button>
@@ -265,11 +238,7 @@ const StudentAssignmentDetail = () => {
               </div>
               <div>
                 <h3 className="font-medium">Submission File</h3>
-                <Button 
-                  variant="outline" 
-                  className="mt-1" 
-                  onClick={handleDownloadSubmission}
-                >
+                <Button variant="outline" className="mt-1" onClick={() => window.open(submission.fileUrl)}>
                   <Download className="mr-2 h-4 w-4" />
                   Download Your Submission
                 </Button>

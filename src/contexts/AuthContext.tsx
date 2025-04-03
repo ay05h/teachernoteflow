@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
@@ -20,10 +21,6 @@ interface AuthContextType {
   isAuthenticated: boolean;
 }
 
-interface UserWithPassword extends User {
-  password: string;
-}
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
@@ -34,17 +31,12 @@ export const useAuth = () => {
   return context;
 };
 
+// Define a mock user database to check login credentials
+const mockUserDB: User[] = [];
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Initialize users array if it doesn't exist in localStorage
-  useEffect(() => {
-    const storedUsers = localStorage.getItem('users');
-    if (!storedUsers) {
-      localStorage.setItem('users', JSON.stringify([]));
-    }
-  }, []);
   
   // In a real app, this would be fetched from a backend
   // For demo, we'll use local storage
@@ -57,53 +49,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string, userType: UserType): Promise<boolean> => {
+    // This would be a real API call in a production app
+    // For demo purposes, we'll simulate a successful login
     setIsLoading(true);
     try {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Check if user exists and validate credentials
+      // Check if user exists and validate user type
       const storedUsers = localStorage.getItem('users');
-      const users: UserWithPassword[] = storedUsers ? JSON.parse(storedUsers) : [];
+      const users: User[] = storedUsers ? JSON.parse(storedUsers) : [];
       
-      const existingUser = users.find(u => u.email === email && u.password === password);
+      const existingUser = users.find(u => u.email === email);
       
-      // If user doesn't exist or password doesn't match
-      if (!existingUser) {
+      // If user exists, validate their type
+      if (existingUser) {
+        if (existingUser.type !== userType) {
+          toast({
+            title: "Login failed",
+            description: `This account is registered as a ${existingUser.type}, not a ${userType}.`,
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return false;
+        }
+        
+        setUser(existingUser);
+        localStorage.setItem('user', JSON.stringify(existingUser));
+        
         toast({
-          title: "Login failed",
-          description: "Invalid email or password.",
-          variant: "destructive",
+          title: "Login successful",
+          description: `Welcome back, ${existingUser.name}!`,
         });
-        setIsLoading(false);
-        return false;
+        
+        return true;
       }
       
-      // Validate user type
-      if (existingUser.type !== userType) {
-        toast({
-          title: "Login failed",
-          description: `This account is registered as a ${existingUser.type}, not a ${userType}.`,
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return false;
-      }
-      
-      // User exists and credentials match
-      const userWithoutPassword = {
-        id: existingUser.id,
-        name: existingUser.name,
-        email: existingUser.email,
-        type: existingUser.type
+      // If user doesn't exist, create a new one
+      const newUser: User = {
+        id: Math.random().toString(36).substring(2, 9),
+        name: email.split('@')[0], // Use part of the email as a name
+        email,
+        type: userType,
       };
       
-      setUser(userWithoutPassword);
-      localStorage.setItem('user', JSON.stringify(userWithoutPassword));
+      // Store the new user in the mock database
+      users.push(newUser);
+      localStorage.setItem('users', JSON.stringify(users));
+      
+      setUser(newUser);
+      localStorage.setItem('user', JSON.stringify(newUser));
       
       toast({
         title: "Login successful",
-        description: `Welcome back, ${existingUser.name}!`,
+        description: `Welcome, ${newUser.name}!`,
       });
       
       return true;
@@ -126,6 +125,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     password: string, 
     userType: UserType
   ): Promise<boolean> => {
+    // This would be a real API call in a production app
     setIsLoading(true);
     try {
       // Simulate API delay
@@ -133,7 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Check if user already exists
       const storedUsers = localStorage.getItem('users');
-      const users: UserWithPassword[] = storedUsers ? JSON.parse(storedUsers) : [];
+      const users: User[] = storedUsers ? JSON.parse(storedUsers) : [];
       
       if (users.some(u => u.email === email)) {
         toast({
@@ -144,12 +144,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
       
-      // Create a new user with password
-      const newUser: UserWithPassword = {
+      // For demo purposes, registration will always succeed
+      const newUser: User = {
         id: Math.random().toString(36).substring(2, 9),
         name,
         email,
-        password, // Store password for authentication
         type: userType,
       };
       
@@ -157,16 +156,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       users.push(newUser);
       localStorage.setItem('users', JSON.stringify(users));
       
-      // Store user without password in the local state
-      const userWithoutPassword = {
-        id: newUser.id,
-        name: newUser.name,
-        email: newUser.email,
-        type: newUser.type
-      };
-      
-      setUser(userWithoutPassword);
-      localStorage.setItem('user', JSON.stringify(userWithoutPassword));
+      setUser(newUser);
+      localStorage.setItem('user', JSON.stringify(newUser));
       
       toast({
         title: "Registration successful",

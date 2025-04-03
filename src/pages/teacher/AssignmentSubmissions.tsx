@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
@@ -6,8 +7,7 @@ import {
   FilePen, 
   FileText,
   Search, 
-  UserCheck,
-  Users
+  UserCheck 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,7 +36,6 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import Chart from '@/components/Chart';
 import { useToast } from '@/components/ui/use-toast';
-import { PlagiarismCluster, Submission } from '@/types';
 
 const TeacherAssignmentSubmissions = () => {
   const { assignmentId } = useParams();
@@ -45,58 +44,16 @@ const TeacherAssignmentSubmissions = () => {
   
   const [assignment, setAssignment] = useState(mockAssignments.find(a => a.id === assignmentId));
   const [submissions, setSubmissions] = useState(mockSubmissions.filter(s => s.assignmentId === assignmentId));
-  const [plagiarismClusters, setPlagiarismClusters] = useState<PlagiarismCluster[]>([]);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSubmission, setSelectedSubmission] = useState<string | null>(null);
   const [marks, setMarks] = useState<string>('');
   const [feedback, setFeedback] = useState<string>('');
   
-  const generateContentHash = (content: string): string => {
-    return content
-      .trim()
-      .toLowerCase()
-      .split('')
-      .reduce((a, b) => {
-        a = ((a << 5) - a) + b.charCodeAt(0);
-        return a & a;
-      }, 0)
-      .toString(36);
-  };
-  
-  const clusterSubmissions = (subs: Submission[]) => {
-    const clusters: Record<string, PlagiarismCluster> = {};
-    
-    subs.forEach(sub => {
-      if (!sub.fileContent) return;
-      
-      const contentHash = generateContentHash(sub.fileContent);
-      
-      if (!clusters[contentHash]) {
-        clusters[contentHash] = {
-          plagiarismScore: 100,
-          studentNames: [sub.studentName],
-          contentHash
-        };
-      } else {
-        if (!clusters[contentHash].studentNames.includes(sub.studentName)) {
-          clusters[contentHash].studentNames.push(sub.studentName);
-        }
-      }
-    });
-    
-    return Object.values(clusters)
-      .filter(cluster => cluster.studentNames.length > 1)
-      .sort((a, b) => b.plagiarismScore - a.plagiarismScore);
-  };
-  
+  // Refresh data when component mounts or when mockSubmissions changes
   useEffect(() => {
     setAssignment(mockAssignments.find(a => a.id === assignmentId));
-    const filteredSubmissions = mockSubmissions.filter(s => s.assignmentId === assignmentId);
-    setSubmissions(filteredSubmissions);
-    
-    const clusters = clusterSubmissions(filteredSubmissions);
-    setPlagiarismClusters(clusters);
+    setSubmissions(mockSubmissions.filter(s => s.assignmentId === assignmentId));
   }, [assignmentId, mockSubmissions, mockAssignments]);
   
   const filteredSubmissions = submissions.filter(submission => 
@@ -122,8 +79,10 @@ const TeacherAssignmentSubmissions = () => {
   const handleSaveGrading = () => {
     if (!selectedSubmission) return;
     
+    // Parse marks as a number
     const numericMarks = parseInt(marks);
     
+    // Validate marks
     if (isNaN(numericMarks)) {
       toast({
         title: "Invalid marks",
@@ -133,6 +92,7 @@ const TeacherAssignmentSubmissions = () => {
       return;
     }
     
+    // Check if marks exceed the total marks
     if (assignment && numericMarks > assignment.totalMarks) {
       toast({
         title: "Invalid marks",
@@ -142,6 +102,7 @@ const TeacherAssignmentSubmissions = () => {
       return;
     }
     
+    // Update the submission
     const updatedSubmission = updateSubmission(selectedSubmission, {
       marks: numericMarks,
       feedback: feedback
@@ -153,12 +114,14 @@ const TeacherAssignmentSubmissions = () => {
         description: "Submission graded successfully",
       });
       
+      // Update local state to reflect changes
       setSubmissions(prevSubmissions => 
         prevSubmissions.map(s => 
           s.id === selectedSubmission ? { ...s, marks: numericMarks, feedback } : s
         )
       );
       
+      // Close the dialog
       handleCloseDialog();
     } else {
       toast({
@@ -195,19 +158,10 @@ const TeacherAssignmentSubmissions = () => {
     );
   }
 
+  // Handle download action
   const handleDownload = (submissionId: string) => {
     const submission = submissions.find(s => s.id === submissionId);
     if (submission) {
-      const anchor = document.createElement('a');
-      anchor.href = submission.fileUrl;
-      
-      const fileName = `submission_${submission.studentName.replace(/\s+/g, '_')}.txt`;
-      anchor.download = fileName;
-      
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      
       toast({
         title: "Download Started",
         description: `Downloading submission from ${submission.studentName}`,
@@ -280,46 +234,6 @@ const TeacherAssignmentSubmissions = () => {
           </div>
         </CardContent>
       </Card>
-      
-      {plagiarismClusters.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Users className="mr-2 h-5 w-5" />
-              Identical Content Clusters
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {plagiarismClusters.map((cluster, index) => (
-                <div key={index} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="font-semibold">Cluster {index + 1}</div>
-                    <div className="flex items-center">
-                      <PlagiarismMeter score={100} size="sm" showLabel={false} />
-                      <span className="ml-2">100% identical</span>
-                    </div>
-                  </div>
-                  <div className="text-sm text-muted-foreground mb-2">
-                    {cluster.studentNames.length} students with identical content
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {cluster.studentNames.map((name, i) => (
-                      <Badge key={i} variant="outline">{name}</Badge>
-                    ))}
-                  </div>
-                </div>
-              ))}
-              
-              {plagiarismClusters.length === 0 && (
-                <div className="text-center py-6 text-muted-foreground">
-                  No identical content clusters detected.
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
       
       <Card>
         <CardHeader>

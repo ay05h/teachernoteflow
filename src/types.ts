@@ -51,14 +51,6 @@ export interface Notification {
   createdAt: Date;
 }
 
-// Plagiarism cluster for grouping identical content
-// For identical content, the plagiarismScore is always 100%
-export interface PlagiarismCluster {
-  plagiarismScore: number;
-  studentNames: string[];
-  contentHash: string; // To identify identical content
-}
-
 // Badge variants
 export type BadgeVariant = 
   | "default" 
