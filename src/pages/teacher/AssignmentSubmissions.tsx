@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
@@ -142,23 +141,24 @@ const TeacherAssignmentSubmissions = () => {
     '81-100%': submissions.filter(s => (s.plagiarismScore || 0) > 80).length,
   };
 
-  // Function to get plagiarism clusters
   const getPlagiarismClusters = () => {
     if (!submissions.length) return [];
     
-    let clusters: { threshold: number, students: { name: string, score: number }[] }[] = [];
+    let clusters: { threshold: number, students: { name: string, score: number, rollNumber: string }[] }[] = [];
     
-    // Thresholds for similarity (70%, 80%, 90%)
     const thresholds = [70, 80, 90];
     
     thresholds.forEach(threshold => {
-      // Find all students with plagiarism score >= threshold
       const highSimilarityStudents = submissions
         .filter(s => (s.plagiarismScore || 0) >= threshold)
-        .map(s => ({ name: s.studentName, score: s.plagiarismScore || 0 }))
-        .sort((a, b) => b.score - a.score); // Sort descending by score
+        .map(s => ({ 
+          name: s.studentName, 
+          score: s.plagiarismScore || 0,
+          rollNumber: s.rollNumber
+        }))
+        .sort((a, b) => b.score - a.score);
       
-      if (highSimilarityStudents.length >= 2) { // Only include clusters with at least 2 students
+      if (highSimilarityStudents.length >= 2) {
         clusters.push({
           threshold,
           students: highSimilarityStudents
@@ -268,7 +268,6 @@ const TeacherAssignmentSubmissions = () => {
             </CardContent>
           </Card>
           
-          {/* New Plagiarism Clusters Section */}
           <Card className="mt-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -287,12 +286,15 @@ const TeacherAssignmentSubmissions = () => {
                 <div className="space-y-6">
                   {plagiarismClusters.map((cluster, index) => (
                     <div key={index} className="rounded-lg border p-4">
-                      <h3 className="text-lg font-medium mb-2">Students with {cluster.threshold}%+ similarity</h3>
+                      <h3 className="text-lg font-medium mb-2">
+                        Students with {cluster.threshold}%+ similarity
+                      </h3>
                       <div className="overflow-x-auto">
                         <Table>
                           <TableHeader>
                             <TableRow>
                               <TableHead>Student Name</TableHead>
+                              <TableHead>Roll Number</TableHead>
                               <TableHead>Similarity Score</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -300,10 +302,11 @@ const TeacherAssignmentSubmissions = () => {
                             {cluster.students.map((student, idx) => (
                               <TableRow key={idx}>
                                 <TableCell className="font-medium">{student.name}</TableCell>
+                                <TableCell>{student.rollNumber}</TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-2">
-                                    <PlagiarismMeter score={student.score} />
-                                    <span>{student.score}%</span>
+                                    <PlagiarismMeter score={student.score} size="md" />
+                                    <span className="font-medium">{student.score}%</span>
                                   </div>
                                 </TableCell>
                               </TableRow>
