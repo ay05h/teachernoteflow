@@ -49,7 +49,6 @@ export interface Notification {
   message: string;
   isRead: boolean;
   createdAt: Date;
-  type?: 'teacher' | 'student'; // Optional type field to help with filtering
 }
 
 // Plagiarism cluster for grouping identical content
@@ -68,13 +67,3 @@ export type BadgeVariant =
   | "outline" 
   | "success"  // Added for submitted assignments
   | "warning"; // Added for due soon assignments
-
-export interface Comment {
-  id: string;
-  assignmentId: string;
-  userId: string;
-  userName: string;
-  userType: UserType;
-  content: string;
-  createdAt: Date;
-}

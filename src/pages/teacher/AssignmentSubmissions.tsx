@@ -1,444 +1,451 @@
-
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useParams } from 'react-router-dom';
+import { 
+  ArrowLeft, 
+  Download, 
+  FilePen, 
+  FileText,
+  Search, 
+  UserCheck,
+  Users
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { mockAssignments, mockSubmissions, mockCourses, updateSubmission, getSubmissionsWithPlagiarismInfo } from '@/services/mockData';
+import { mockAssignments, mockSubmissions, updateSubmission } from '@/services/mockData';
+import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import PlagiarismMeter from '@/components/PlagiarismMeter';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { CheckCircle, ChevronDown, FileText, MessageCircle, Users } from 'lucide-react';
-import { useNotifications } from '@/contexts/NotificationContext';
-import TeacherAssignmentDiscussion from '@/components/TeacherAssignmentDiscussion';
-import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import Chart from '@/components/Chart';
+import { useToast } from '@/components/ui/use-toast';
+import { PlagiarismCluster, Submission } from '@/types';
 
 const TeacherAssignmentSubmissions = () => {
-  const { assignmentId } = useParams<{ assignmentId: string }>();
+  const { assignmentId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
-  const { addNotification } = useNotifications();
   
-  const [assignment, setAssignment] = useState<any>(null);
-  const [course, setCourse] = useState<any>(null);
-  const [submissions, setSubmissions] = useState<any[]>([]);
-  const [plagiarismClusters, setPlagiarismClusters] = useState<any[]>([]);
-  const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [marks, setMarks] = useState<number | ''>('');
-  const [feedback, setFeedback] = useState('');
-  const [activeTab, setActiveTab] = useState('submissions');
-  const [submissionStats, setSubmissionStats] = useState({
-    totalSubmissions: 0,
-    plagiarismDetected: 0,
-    lowPlagiarism: 0,
-    mediumPlagiarism: 0,
-    highPlagiarism: 0
-  });
+  const [assignment, setAssignment] = useState(mockAssignments.find(a => a.id === assignmentId));
+  const [submissions, setSubmissions] = useState(mockSubmissions.filter(s => s.assignmentId === assignmentId));
+  const [plagiarismClusters, setPlagiarismClusters] = useState<PlagiarismCluster[]>([]);
   
-  useEffect(() => {
-    if (!assignmentId) return;
-    
-    const foundAssignment = mockAssignments.find(a => a.id === assignmentId);
-    if (foundAssignment) {
-      setAssignment(foundAssignment);
-      
-      const foundCourse = mockCourses.find(c => c.id === foundAssignment.courseId);
-      setCourse(foundCourse);
-      
-      const { submissions, plagiarismClusters } = getSubmissionsWithPlagiarismInfo(assignmentId);
-      setSubmissions(submissions);
-      setPlagiarismClusters(plagiarismClusters.sort((a, b) => b.plagiarismScore - a.plagiarismScore)); // Sort by plagiarism score descending
-
-      // Calculate statistics
-      const stats = {
-        totalSubmissions: submissions.length,
-        plagiarismDetected: submissions.filter(s => (s.plagiarismScore || 0) > 20).length,
-        lowPlagiarism: submissions.filter(s => (s.plagiarismScore || 0) <= 20).length,
-        mediumPlagiarism: submissions.filter(s => (s.plagiarismScore || 0) > 20 && (s.plagiarismScore || 0) <= 50).length,
-        highPlagiarism: submissions.filter(s => (s.plagiarismScore || 0) > 50).length
-      };
-      setSubmissionStats(stats);
-    }
-  }, [assignmentId]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSubmission, setSelectedSubmission] = useState<string | null>(null);
+  const [marks, setMarks] = useState<string>('');
+  const [feedback, setFeedback] = useState<string>('');
   
-  const handleOpenDialog = (submission: any) => {
-    setSelectedSubmission(submission);
-    setMarks(submission.marks || '');
-    setFeedback(submission.feedback || '');
-    setDialogOpen(true);
+  const generateContentHash = (content: string): string => {
+    return content
+      .trim()
+      .toLowerCase()
+      .split('')
+      .reduce((a, b) => {
+        a = ((a << 5) - a) + b.charCodeAt(0);
+        return a & a;
+      }, 0)
+      .toString(36);
   };
   
-  const handleSaveGrades = () => {
-    if (!selectedSubmission || marks === '') return;
+  const clusterSubmissions = (subs: Submission[]) => {
+    const clusters: Record<string, PlagiarismCluster> = {};
     
-    try {
-      const updatedSubmission = updateSubmission(selectedSubmission.id, {
-        marks: Number(marks),
-        feedback,
-      });
+    subs.forEach(sub => {
+      if (!sub.fileContent) return;
       
-      setSubmissions(prev => prev.map(sub => 
-        sub.id === updatedSubmission?.id ? updatedSubmission : sub
-      ));
+      const contentHash = generateContentHash(sub.fileContent);
       
-      setDialogOpen(false);
-      
-      toast({
-        title: "Grades saved successfully",
-        description: `Marks: ${marks}, Feedback saved for ${selectedSubmission.studentName}`,
-      });
-      
-      if (user) {
-        addNotification({
-          userId: selectedSubmission.studentId,
-          title: "Assignment Graded",
-          message: `Your assignment "${assignment.title}" has been graded. You received ${marks} marks.`,
-          type: "student" // Explicitly route this to student
-        });
+      if (!clusters[contentHash]) {
+        clusters[contentHash] = {
+          plagiarismScore: 100,
+          studentNames: [sub.studentName],
+          contentHash
+        };
+      } else {
+        if (!clusters[contentHash].studentNames.includes(sub.studentName)) {
+          clusters[contentHash].studentNames.push(sub.studentName);
+        }
       }
-    } catch (error) {
-      console.error('Error saving grades:', error);
-      toast({
-        title: "Error",
-        description: "There was an error saving the grades",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  // Generate data for the plagiarism distribution chart
-  const generatePlagiarismDistributionData = () => {
-    // Create bins for plagiarism percentage ranges (0-10, 11-20, ..., 91-100)
-    const bins = Array.from({ length: 10 }, (_, i) => ({
-      range: `${i * 10}-${(i + 1) * 10}%`,
-      count: 0,
-      percent: i * 10 // Starting percent for the range
-    }));
-    
-    // Count submissions in each bin
-    submissions.forEach(submission => {
-      const score = submission.plagiarismScore || 0;
-      const binIndex = Math.min(Math.floor(score / 10), 9); // Ensure we don't go out of bounds
-      bins[binIndex].count++;
     });
     
-    return bins;
+    return Object.values(clusters)
+      .filter(cluster => cluster.studentNames.length > 1)
+      .sort((a, b) => b.plagiarismScore - a.plagiarismScore);
   };
   
-  const plagiarismDistribution = generatePlagiarismDistributionData();
+  useEffect(() => {
+    setAssignment(mockAssignments.find(a => a.id === assignmentId));
+    const filteredSubmissions = mockSubmissions.filter(s => s.assignmentId === assignmentId);
+    setSubmissions(filteredSubmissions);
+    
+    const clusters = clusterSubmissions(filteredSubmissions);
+    setPlagiarismClusters(clusters);
+  }, [assignmentId, mockSubmissions, mockAssignments]);
   
-  const COLORS = ['#22c55e', '#eab308', '#ef4444'];
-  const STATUS_COLORS = ['#3b82f6', '#94a3b8'];
+  const filteredSubmissions = submissions.filter(submission => 
+    submission.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    submission.rollNumber.toLowerCase().includes(searchTerm.toLowerCase())
+  );
   
-  const plagiarismData = [
-    { name: 'Low (0-20%)', value: submissionStats.lowPlagiarism },
-    { name: 'Medium (21-50%)', value: submissionStats.mediumPlagiarism },
-    { name: 'High (51-100%)', value: submissionStats.highPlagiarism }
-  ];
-  
-  const submissionStatusData = [
-    { name: 'Submitted', value: submissionStats.totalSubmissions },
-    { name: 'Not Submitted', value: 20 - submissionStats.totalSubmissions } // Assuming 20 students per class for demo
-  ];
-  
-  const formatPieChartLabel = ({ name, percent }: { name: string; percent: number }) => {
-    return `${name}: ${(percent * 100).toFixed(0)}%`;
+  const handleOpenDialog = (submissionId: string) => {
+    const submission = submissions.find(s => s.id === submissionId);
+    if (submission) {
+      setMarks(submission.marks?.toString() || '');
+      setFeedback(submission.feedback || '');
+      setSelectedSubmission(submissionId);
+    }
   };
   
-  if (!assignment || !course) {
-    return <div>Loading...</div>;
+  const handleCloseDialog = () => {
+    setSelectedSubmission(null);
+    setMarks('');
+    setFeedback('');
+  };
+  
+  const handleSaveGrading = () => {
+    if (!selectedSubmission) return;
+    
+    const numericMarks = parseInt(marks);
+    
+    if (isNaN(numericMarks)) {
+      toast({
+        title: "Invalid marks",
+        description: "Please enter a valid number for marks.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (assignment && numericMarks > assignment.totalMarks) {
+      toast({
+        title: "Invalid marks",
+        description: `Marks cannot exceed the maximum of ${assignment.totalMarks}.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const updatedSubmission = updateSubmission(selectedSubmission, {
+      marks: numericMarks,
+      feedback: feedback
+    });
+    
+    if (updatedSubmission) {
+      toast({
+        title: "Success",
+        description: "Submission graded successfully",
+      });
+      
+      setSubmissions(prevSubmissions => 
+        prevSubmissions.map(s => 
+          s.id === selectedSubmission ? { ...s, marks: numericMarks, feedback } : s
+        )
+      );
+      
+      handleCloseDialog();
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to update submission. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  const totalSubmissions = submissions.length;
+  const gradedSubmissions = submissions.filter(s => s.marks !== undefined).length;
+  const highPlagiarism = submissions.filter(s => (s.plagiarismScore || 0) > 50).length;
+
+  const plagiarismRanges = {
+    '0-20%': submissions.filter(s => (s.plagiarismScore || 0) <= 20).length,
+    '21-40%': submissions.filter(s => (s.plagiarismScore || 0) > 20 && (s.plagiarismScore || 0) <= 40).length,
+    '41-60%': submissions.filter(s => (s.plagiarismScore || 0) > 40 && (s.plagiarismScore || 0) <= 60).length,
+    '61-80%': submissions.filter(s => (s.plagiarismScore || 0) > 60 && (s.plagiarismScore || 0) <= 80).length,
+    '81-100%': submissions.filter(s => (s.plagiarismScore || 0) > 80).length,
+  };
+
+  if (!assignment) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <FileText className="h-12 w-12 text-muted-foreground" />
+        <h3 className="mt-4 text-lg font-medium">Assignment not found</h3>
+        <p className="text-muted-foreground">The assignment you're looking for doesn't exist.</p>
+        <Button className="mt-4" onClick={() => navigate('/teacher/assignments')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Assignments
+        </Button>
+      </div>
+    );
   }
-  
+
+  const handleDownload = (submissionId: string) => {
+    const submission = submissions.find(s => s.id === submissionId);
+    if (submission) {
+      const anchor = document.createElement('a');
+      anchor.href = submission.fileUrl;
+      
+      const fileName = `submission_${submission.studentName.replace(/\s+/g, '_')}.txt`;
+      anchor.download = fileName;
+      
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      
+      toast({
+        title: "Download Started",
+        description: `Downloading submission from ${submission.studentName}`,
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="submissions" value={activeTab} onValueChange={setActiveTab}>
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">{assignment.title}</h2>
-            <p className="text-muted-foreground">
-              {course.title} ({course.code}) - View and grade student submissions
-            </p>
+      <div className="flex flex-col gap-2">
+        <Button 
+          variant="outline" 
+          className="w-fit"
+          onClick={() => navigate('/teacher/assignments')}
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Assignments
+        </Button>
+        <h2 className="text-3xl font-bold tracking-tight">{assignment.title}</h2>
+        <p className="text-muted-foreground">
+          Due: {format(new Date(assignment.dueDate), 'MMMM dd, yyyy')} | 
+          Total Marks: {assignment.totalMarks}
+        </p>
+      </div>
+      
+      <div className="grid gap-6 md:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-medium">Total Submissions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{totalSubmissions}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-medium">Graded</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{gradedSubmissions} / {totalSubmissions}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-medium">High Plagiarism</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-red-500">{highPlagiarism}</div>
+          </CardContent>
+        </Card>
+      </div>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Plagiarism Analysis</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-80">
+            <Chart 
+              data={[
+                { name: '0-20%', value: plagiarismRanges['0-20%'] },
+                { name: '21-40%', value: plagiarismRanges['21-40%'] },
+                { name: '41-60%', value: plagiarismRanges['41-60%'] },
+                { name: '61-80%', value: plagiarismRanges['61-80%'] },
+                { name: '81-100%', value: plagiarismRanges['81-100%'] },
+              ]} 
+              type="bar"
+              title="Plagiarism Distribution" 
+            />
+          </div>
+        </CardContent>
+      </Card>
+      
+      {plagiarismClusters.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Users className="mr-2 h-5 w-5" />
+              Identical Content Clusters
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {plagiarismClusters.map((cluster, index) => (
+                <div key={index} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-semibold">Cluster {index + 1}</div>
+                    <div className="flex items-center">
+                      <PlagiarismMeter score={100} size="sm" showLabel={false} />
+                      <span className="ml-2">100% identical</span>
+                    </div>
+                  </div>
+                  <div className="text-sm text-muted-foreground mb-2">
+                    {cluster.studentNames.length} students with identical content
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {cluster.studentNames.map((name, i) => (
+                      <Badge key={i} variant="outline">{name}</Badge>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              
+              {plagiarismClusters.length === 0 && (
+                <div className="text-center py-6 text-muted-foreground">
+                  No identical content clusters detected.
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Student Submissions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-4 relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search by student name or roll number..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
           
-          <TabsList className="mt-4 md:mt-0">
-            <TabsTrigger value="submissions">Submissions</TabsTrigger>
-            <TabsTrigger value="discussion">
-              <div className="flex items-center">
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Discussion
-              </div>
-            </TabsTrigger>
-          </TabsList>
-        </div>
-        
-        <TabsContent value="submissions" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle>Submission Status</CardTitle>
-                <CardDescription>
-                  {submissionStats.totalSubmissions} out of 20 submissions received
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[250px] flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={submissionStatusData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={formatPieChartLabel}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {submissionStatusData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={STATUS_COLORS[index % STATUS_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        formatter={(value, name) => [`${value} students`, name]}
-                        contentStyle={{ background: 'var(--background)', border: '1px solid var(--border)' }}
-                      />
-                      <Legend 
-                        layout="horizontal" 
-                        verticalAlign="bottom" 
-                        align="center"
-                        formatter={(value) => <span className="text-sm text-muted-foreground">{value}</span>}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle>Plagiarism Distribution</CardTitle>
-                <CardDescription>
-                  Number of submissions by plagiarism percentage
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[250px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={plagiarismDistribution}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 30 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis 
-                        dataKey="range" 
-                        label={{ value: 'Similarity %', position: 'bottom', offset: 0 }}
-                        tick={{ fontSize: 11 }}
-                      />
-                      <YAxis 
-                        label={{ value: 'Number of Students', angle: -90, position: 'insideLeft' }}
-                        tick={{ fontSize: 11 }}
-                      />
-                      <Tooltip
-                        formatter={(value) => [`${value} submissions`, 'Count']}
-                        contentStyle={{ background: 'var(--background)', border: '1px solid var(--border)' }}
-                      />
-                      <Bar 
-                        dataKey="count" 
-                        fill="#3b82f6"
-                        name="Number of Submissions" 
-                        radius={[4, 4, 0, 0]}
-                      >
-                        {plagiarismDistribution.map((entry, index) => {
-                          // Determine color based on percentage range
-                          let color = '#22c55e'; // green for low
-                          if (entry.percent >= 50) color = '#ef4444'; // red for high
-                          else if (entry.percent >= 20) color = '#eab308'; // yellow for medium
-                          return <Cell key={`cell-${index}`} fill={color} />;
-                        })}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {plagiarismClusters.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Users className="h-5 w-5 mr-2" />
-                  Plagiarism Clusters
-                </CardTitle>
-                <CardDescription>
-                  The following groups of submissions have similar or identical content.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {plagiarismClusters.map((cluster, index) => (
-                  <Collapsible key={index} className="border rounded-lg p-4">
-                    <CollapsibleTrigger className="flex items-center justify-between w-full">
-                      <div className="flex items-center">
-                        <PlagiarismMeter score={cluster.plagiarismScore} size="sm" />
-                        <span className="ml-2 font-medium">
-                          Cluster #{index + 1}: {cluster.plagiarismScore}% similarity between {cluster.studentNames.length} submissions
-                        </span>
+          {filteredSubmissions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10">
+              <UserCheck className="h-10 w-10 text-muted-foreground" />
+              <p className="mt-2 text-center text-muted-foreground">
+                No submissions found matching your search.
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student</TableHead>
+                  <TableHead>Roll Number</TableHead>
+                  <TableHead>Submitted On</TableHead>
+                  <TableHead>Plagiarism</TableHead>
+                  <TableHead>Marks</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredSubmissions.map((submission) => (
+                  <TableRow key={submission.id}>
+                    <TableCell className="font-medium">{submission.studentName}</TableCell>
+                    <TableCell>{submission.rollNumber}</TableCell>
+                    <TableCell>{format(new Date(submission.submittedAt), 'MMM dd, yyyy')}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <PlagiarismMeter score={submission.plagiarismScore || 0} />
+                        <span>{submission.plagiarismScore || 0}%</span>
                       </div>
-                      <ChevronDown className="h-4 w-4" />
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-4 pl-8">
-                      <div className="space-y-2">
-                        <p className="font-medium text-muted-foreground">Students involved:</p>
-                        <ul className="list-disc pl-6 space-y-1">
-                          {cluster.studentNames.map((name: string, i: number) => (
-                            <li key={i} className="text-sm">{name}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>All Submissions</CardTitle>
-              <CardDescription>
-                {submissions.length} submission{submissions.length !== 1 ? 's' : ''} received
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {submissions.length === 0 ? (
-                  <p className="text-center py-8 text-muted-foreground">
-                    No submissions received yet.
-                  </p>
-                ) : (
-                  submissions.map((submission) => (
-                    <div 
-                      key={submission.id} 
-                      className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 border rounded-lg"
-                    >
-                      <div className="space-y-1">
-                        <div className="font-medium flex items-center">
-                          {submission.studentName} 
-                          {submission.marks && (
-                            <span className="ml-2 text-xs bg-green-500 text-white px-2 py-0.5 rounded-full flex items-center">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Graded
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          Roll Number: {submission.rollNumber} • Submitted on {new Date(submission.submittedAt).toLocaleDateString()}
-                        </div>
-                        {submission.plagiarismScore > 0 && (
-                          <div className="flex items-center mt-1">
-                            <PlagiarismMeter score={submission.plagiarismScore} size="sm" />
-                            <span className="text-xs ml-1">
-                              {submission.plagiarismScore}% similar to other submissions
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex mt-3 md:mt-0 space-x-2 w-full md:w-auto">
+                    </TableCell>
+                    <TableCell>
+                      {submission.marks !== undefined ? (
+                        <Badge variant={submission.marks >= assignment.totalMarks * 0.7 ? "success" : "secondary"}>
+                          {submission.marks} / {assignment.totalMarks}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">Not Graded</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex gap-2 justify-end">
                         <Button 
                           variant="outline" 
-                          size="sm" 
-                          className="flex-1 md:flex-none"
-                          onClick={() => window.open(submission.fileUrl, '_blank')}
+                          size="sm"
+                          onClick={() => handleDownload(submission.id)}
                         >
-                          <FileText className="h-4 w-4 mr-2" />
-                          View
+                          <Download className="h-4 w-4" />
                         </Button>
                         <Button 
+                          variant="outline" 
                           size="sm"
-                          className="flex-1 md:flex-none"
-                          onClick={() => handleOpenDialog(submission)}
+                          onClick={() => handleOpenDialog(submission.id)}
                         >
-                          Grade
+                          <FilePen className="h-4 w-4" />
                         </Button>
                       </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Grade Submission</DialogTitle>
-                <DialogDescription>
-                  Student: {selectedSubmission?.studentName}
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="marks">Marks (out of {assignment.totalMarks})</Label>
-                  <Input 
-                    id="marks" 
-                    type="number"
-                    min="0"
-                    max={assignment.totalMarks} 
-                    value={marks}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value);
-                      if (!isNaN(val) && val >= 0 && val <= assignment.totalMarks) {
-                        setMarks(val);
-                      } else if (e.target.value === '') {
-                        setMarks('');
-                      }
-                    }}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="feedback">Feedback</Label>
-                  <Textarea 
-                    id="feedback" 
-                    value={feedback}
-                    onChange={(e) => setFeedback(e.target.value)}
-                    placeholder="Provide feedback to the student..."
-                    rows={4}
-                  />
-                </div>
-              </div>
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleSaveGrades} disabled={marks === ''}>
-                  Save Grades
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </TabsContent>
-        
-        <TabsContent value="discussion">
-          <TeacherAssignmentDiscussion
-            assignmentId={assignmentId || ''}
-            assignmentTitle={assignment.title}
-            courseId={assignment.courseId}
-            teacherId={user?.id || ''}
-            onBack={() => setActiveTab('submissions')}
-          />
-        </TabsContent>
-      </Tabs>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+      
+      <Dialog open={!!selectedSubmission} onOpenChange={(open) => !open && handleCloseDialog()}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Grade Submission</DialogTitle>
+            <DialogDescription>
+              Provide feedback and assign marks for the student's submission.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid gap-2">
+              <label htmlFor="marks" className="text-sm font-medium">
+                Marks (out of {assignment.totalMarks})
+              </label>
+              <Input
+                id="marks"
+                type="number"
+                value={marks}
+                onChange={(e) => setMarks(e.target.value)}
+                max={assignment.totalMarks}
+                min="0"
+              />
+            </div>
+            <div className="grid gap-2">
+              <label htmlFor="feedback" className="text-sm font-medium">
+                Feedback
+              </label>
+              <Textarea
+                id="feedback"
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+                rows={4}
+                placeholder="Provide feedback on the submission"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCloseDialog}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveGrading}>Save Grading</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

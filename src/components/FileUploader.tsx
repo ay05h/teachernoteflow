@@ -11,7 +11,7 @@ interface FileUploaderProps {
 
 const FileUploader = ({
   onFileSelect,
-  accept = '.pdf,.txt',
+  accept = '.pdf',
   maxSize = 10,
   label = 'Upload File',
 }: FileUploaderProps) => {
@@ -31,15 +31,11 @@ const FileUploader = ({
   
   const validateFile = (selectedFile: File): boolean => {
     // Validate file type
+    const fileType = selectedFile.type;
     const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase();
     
-    // Check if the file extension is in the accepted list
-    const acceptedExtensions = accept.split(',').map(ext => 
-      ext.trim().toLowerCase().replace('.', '')
-    );
-    
-    if (!acceptedExtensions.includes(fileExtension || '')) {
-      setError(`Invalid file type. Please upload ${accept.replace(/\./g, '')} files only.`);
+    if (accept !== '*' && !accept.includes(fileExtension || '')) {
+      setError(`Invalid file type. Please upload ${accept} files only.`);
       return false;
     }
     
@@ -153,7 +149,7 @@ const FileUploader = ({
                 Drop your file here, or click to browse
               </p>
               <p className="text-xs text-foreground/50 mt-2">
-                {accept.replace(/\./g, '').toUpperCase()} files up to {maxSize}MB
+                {accept} files up to {maxSize}MB
               </p>
             </div>
           </div>

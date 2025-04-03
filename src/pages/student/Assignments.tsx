@@ -34,9 +34,8 @@ const StudentAssignments = () => {
   
   // Check if student has submitted an assignment
   const hasSubmitted = (assignmentId: string) => {
-    if (!user) return false;
     return mockSubmissions.some(
-      s => s.assignmentId === assignmentId && s.studentId === user.id
+      s => s.assignmentId === assignmentId && s.studentId === user?.id
     );
   };
   
