@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
@@ -6,7 +7,8 @@ import {
   FilePen, 
   FileText,
   Search, 
-  UserCheck 
+  UserCheck,
+  Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -140,6 +142,35 @@ const TeacherAssignmentSubmissions = () => {
     '81-100%': submissions.filter(s => (s.plagiarismScore || 0) > 80).length,
   };
 
+  // Function to get plagiarism clusters
+  const getPlagiarismClusters = () => {
+    if (!submissions.length) return [];
+    
+    let clusters: { threshold: number, students: { name: string, score: number }[] }[] = [];
+    
+    // Thresholds for similarity (70%, 80%, 90%)
+    const thresholds = [70, 80, 90];
+    
+    thresholds.forEach(threshold => {
+      // Find all students with plagiarism score >= threshold
+      const highSimilarityStudents = submissions
+        .filter(s => (s.plagiarismScore || 0) >= threshold)
+        .map(s => ({ name: s.studentName, score: s.plagiarismScore || 0 }))
+        .sort((a, b) => b.score - a.score); // Sort descending by score
+      
+      if (highSimilarityStudents.length >= 2) { // Only include clusters with at least 2 students
+        clusters.push({
+          threshold,
+          students: highSimilarityStudents
+        });
+      }
+    });
+    
+    return clusters;
+  };
+  
+  const plagiarismClusters = getPlagiarismClusters();
+
   if (!assignment) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
@@ -234,6 +265,56 @@ const TeacherAssignmentSubmissions = () => {
                   title="Plagiarism Distribution" 
                 />
               </div>
+            </CardContent>
+          </Card>
+          
+          {/* New Plagiarism Clusters Section */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Similarity Clusters
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {plagiarismClusters.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <p className="text-center text-muted-foreground">
+                    No significant similarity clusters found among student submissions.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {plagiarismClusters.map((cluster, index) => (
+                    <div key={index} className="rounded-lg border p-4">
+                      <h3 className="text-lg font-medium mb-2">Students with {cluster.threshold}%+ similarity</h3>
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Student Name</TableHead>
+                              <TableHead>Similarity Score</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {cluster.students.map((student, idx) => (
+                              <TableRow key={idx}>
+                                <TableCell className="font-medium">{student.name}</TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <PlagiarismMeter score={student.score} />
+                                    <span>{student.score}%</span>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
           
