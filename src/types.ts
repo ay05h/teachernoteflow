@@ -51,6 +51,18 @@ export interface Notification {
   createdAt: Date;
 }
 
+// New interface for discussion comments
+export interface Comment {
+  id: string;
+  assignmentId: string;
+  userId: string;
+  userName: string;
+  userType: UserType;
+  content: string;
+  createdAt: Date;
+  replies?: Comment[];
+}
+
 // Badge variants
 export type BadgeVariant = 
   | "default" 

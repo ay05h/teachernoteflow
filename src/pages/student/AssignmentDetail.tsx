@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
@@ -21,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import AssignmentDiscussion from '@/components/AssignmentDiscussion';
 
 const StudentAssignmentDetail = () => {
   const { assignmentId } = useParams();
@@ -28,18 +28,12 @@ const StudentAssignmentDetail = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   
-  // Find the assignment
   const [assignment, setAssignment] = useState(mockAssignments.find(a => a.id === assignmentId));
-  
-  // Get course for this assignment
   const [course, setCourse] = useState(assignment ? mockCourses.find(c => c.id === assignment.courseId) : null);
-  
-  // Find if student has submitted this assignment
   const [submission, setSubmission] = useState(
     mockSubmissions.find(s => s.assignmentId === assignmentId && s.studentId === user?.id)
   );
   
-  // Refresh data when component mounts or when assignment changes
   useEffect(() => {
     const currentAssignment = mockAssignments.find(a => a.id === assignmentId);
     setAssignment(currentAssignment);
@@ -59,7 +53,6 @@ const StudentAssignmentDetail = () => {
   const [isFileValid, setIsFileValid] = useState(true);
   const [fileError, setFileError] = useState<string | null>(null);
   
-  // Handle file reading for text content extraction
   const handleFileRead = (file: File) => {
     if (!file) {
       setIsFileValid(false);
@@ -67,7 +60,6 @@ const StudentAssignmentDetail = () => {
       return;
     }
     
-    // Check if file is a .txt file
     if (!file.name.toLowerCase().endsWith('.txt')) {
       setIsFileValid(false);
       setFileError('Only .txt files are allowed for plagiarism detection');
@@ -90,7 +82,6 @@ const StudentAssignmentDetail = () => {
     reader.readAsText(file);
   };
   
-  // When a file is selected, read its content
   useEffect(() => {
     if (file) {
       handleFileRead(file);
@@ -100,7 +91,6 @@ const StudentAssignmentDetail = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate form
     if (!rollNumber || !file || !isFileValid) {
       toast({
         title: 'Error',
@@ -119,23 +109,20 @@ const StudentAssignmentDetail = () => {
       return;
     }
     
-    // Create new submission with text content for plagiarism detection
     const newSubmission = addSubmission({
       assignmentId: assignmentId || '',
       studentId: user.id,
       studentName: user.name,
-      fileUrl: URL.createObjectURL(file), // In a real app, this would be a server URL
+      fileUrl: URL.createObjectURL(file),
       rollNumber: rollNumber,
-      fileContent: fileContent, // Add the text content for plagiarism detection
+      fileContent: fileContent,
     });
     
-    // Show success message
     toast({
       title: 'Success',
       description: 'Assignment submitted successfully',
     });
     
-    // Update submission state
     setSubmission(newSubmission);
   };
   
@@ -153,7 +140,6 @@ const StudentAssignmentDetail = () => {
     );
   }
 
-  // Calculate time status for assignment
   const getTimeStatus = () => {
     const now = new Date();
     const dueDateObj = new Date(assignment.dueDate);
@@ -346,6 +332,8 @@ const StudentAssignmentDetail = () => {
           </CardContent>
         </Card>
       )}
+      
+      <AssignmentDiscussion assignmentId={assignmentId || ''} user={user} />
     </div>
   );
 };

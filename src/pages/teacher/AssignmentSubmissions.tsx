@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
@@ -36,11 +35,15 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import Chart from '@/components/Chart';
 import { useToast } from '@/components/ui/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/contexts/AuthContext';
+import AssignmentDiscussion from '@/components/AssignmentDiscussion';
 
 const TeacherAssignmentSubmissions = () => {
   const { assignmentId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const [assignment, setAssignment] = useState(mockAssignments.find(a => a.id === assignmentId));
   const [submissions, setSubmissions] = useState(mockSubmissions.filter(s => s.assignmentId === assignmentId));
@@ -50,7 +53,6 @@ const TeacherAssignmentSubmissions = () => {
   const [marks, setMarks] = useState<string>('');
   const [feedback, setFeedback] = useState<string>('');
   
-  // Refresh data when component mounts or when mockSubmissions changes
   useEffect(() => {
     setAssignment(mockAssignments.find(a => a.id === assignmentId));
     setSubmissions(mockSubmissions.filter(s => s.assignmentId === assignmentId));
@@ -79,10 +81,8 @@ const TeacherAssignmentSubmissions = () => {
   const handleSaveGrading = () => {
     if (!selectedSubmission) return;
     
-    // Parse marks as a number
     const numericMarks = parseInt(marks);
     
-    // Validate marks
     if (isNaN(numericMarks)) {
       toast({
         title: "Invalid marks",
@@ -92,7 +92,6 @@ const TeacherAssignmentSubmissions = () => {
       return;
     }
     
-    // Check if marks exceed the total marks
     if (assignment && numericMarks > assignment.totalMarks) {
       toast({
         title: "Invalid marks",
@@ -102,7 +101,6 @@ const TeacherAssignmentSubmissions = () => {
       return;
     }
     
-    // Update the submission
     const updatedSubmission = updateSubmission(selectedSubmission, {
       marks: numericMarks,
       feedback: feedback
@@ -114,14 +112,12 @@ const TeacherAssignmentSubmissions = () => {
         description: "Submission graded successfully",
       });
       
-      // Update local state to reflect changes
       setSubmissions(prevSubmissions => 
         prevSubmissions.map(s => 
           s.id === selectedSubmission ? { ...s, marks: numericMarks, feedback } : s
         )
       );
       
-      // Close the dialog
       handleCloseDialog();
     } else {
       toast({
@@ -158,7 +154,6 @@ const TeacherAssignmentSubmissions = () => {
     );
   }
 
-  // Handle download action
   const handleDownload = (submissionId: string) => {
     const submission = submissions.find(s => s.id === submissionId);
     if (submission) {
@@ -214,108 +209,121 @@ const TeacherAssignmentSubmissions = () => {
         </Card>
       </div>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Plagiarism Analysis</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-80">
-            <Chart 
-              data={[
-                { name: '0-20%', value: plagiarismRanges['0-20%'] },
-                { name: '21-40%', value: plagiarismRanges['21-40%'] },
-                { name: '41-60%', value: plagiarismRanges['41-60%'] },
-                { name: '61-80%', value: plagiarismRanges['61-80%'] },
-                { name: '81-100%', value: plagiarismRanges['81-100%'] },
-              ]} 
-              type="bar"
-              title="Plagiarism Distribution" 
-            />
-          </div>
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Student Submissions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4 relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search by student name or roll number..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+      <Tabs defaultValue="submissions">
+        <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsTrigger value="submissions">Submissions</TabsTrigger>
+          <TabsTrigger value="discussion">Discussion</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="submissions">
+          <Card>
+            <CardHeader>
+              <CardTitle>Plagiarism Analysis</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-80">
+                <Chart 
+                  data={[
+                    { name: '0-20%', value: plagiarismRanges['0-20%'] },
+                    { name: '21-40%', value: plagiarismRanges['21-40%'] },
+                    { name: '41-60%', value: plagiarismRanges['41-60%'] },
+                    { name: '61-80%', value: plagiarismRanges['61-80%'] },
+                    { name: '81-100%', value: plagiarismRanges['81-100%'] },
+                  ]} 
+                  type="bar"
+                  title="Plagiarism Distribution" 
+                />
+              </div>
+            </CardContent>
+          </Card>
           
-          {filteredSubmissions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10">
-              <UserCheck className="h-10 w-10 text-muted-foreground" />
-              <p className="mt-2 text-center text-muted-foreground">
-                No submissions found matching your search.
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Roll Number</TableHead>
-                  <TableHead>Submitted On</TableHead>
-                  <TableHead>Plagiarism</TableHead>
-                  <TableHead>Marks</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredSubmissions.map((submission) => (
-                  <TableRow key={submission.id}>
-                    <TableCell className="font-medium">{submission.studentName}</TableCell>
-                    <TableCell>{submission.rollNumber}</TableCell>
-                    <TableCell>{format(new Date(submission.submittedAt), 'MMM dd, yyyy')}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <PlagiarismMeter score={submission.plagiarismScore || 0} />
-                        <span>{submission.plagiarismScore || 0}%</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {submission.marks !== undefined ? (
-                        <Badge variant={submission.marks >= assignment.totalMarks * 0.7 ? "success" : "secondary"}>
-                          {submission.marks} / {assignment.totalMarks}
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">Not Graded</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex gap-2 justify-end">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleDownload(submission.id)}
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleOpenDialog(submission.id)}
-                        >
-                          <FilePen className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Student Submissions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-4 relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search by student name or roll number..."
+                  className="pl-8"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              
+              {filteredSubmissions.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10">
+                  <UserCheck className="h-10 w-10 text-muted-foreground" />
+                  <p className="mt-2 text-center text-muted-foreground">
+                    No submissions found matching your search.
+                  </p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Student</TableHead>
+                      <TableHead>Roll Number</TableHead>
+                      <TableHead>Submitted On</TableHead>
+                      <TableHead>Plagiarism</TableHead>
+                      <TableHead>Marks</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredSubmissions.map((submission) => (
+                      <TableRow key={submission.id}>
+                        <TableCell className="font-medium">{submission.studentName}</TableCell>
+                        <TableCell>{submission.rollNumber}</TableCell>
+                        <TableCell>{format(new Date(submission.submittedAt), 'MMM dd, yyyy')}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <PlagiarismMeter score={submission.plagiarismScore || 0} />
+                            <span>{submission.plagiarismScore || 0}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {submission.marks !== undefined ? (
+                            <Badge variant={submission.marks >= assignment.totalMarks * 0.7 ? "success" : "secondary"}>
+                              {submission.marks} / {assignment.totalMarks}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline">Not Graded</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex gap-2 justify-end">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleDownload(submission.id)}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleOpenDialog(submission.id)}
+                            >
+                              <FilePen className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="discussion">
+          <AssignmentDiscussion assignmentId={assignmentId || ''} user={user} />
+        </TabsContent>
+      </Tabs>
       
       <Dialog open={!!selectedSubmission} onOpenChange={(open) => !open && handleCloseDialog()}>
         <DialogContent className="sm:max-w-lg">
