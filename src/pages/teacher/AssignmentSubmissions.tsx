@@ -144,17 +144,17 @@ const TeacherAssignmentSubmissions = () => {
   const getPlagiarismClusters = () => {
     if (!submissions.length) return [];
     
-    let clusters: { threshold: number, students: { name: string, score: number, rollNumber: string }[] }[] = [];
-    
     const thresholds = [70, 80, 90];
+    let clusters = [];
     
-    thresholds.forEach(threshold => {
+    for (const threshold of thresholds) {
       const highSimilarityStudents = submissions
         .filter(s => (s.plagiarismScore || 0) >= threshold)
-        .map(s => ({ 
-          name: s.studentName, 
-          score: s.plagiarismScore || 0,
-          rollNumber: s.rollNumber
+        .map(s => ({
+          id: s.id,
+          name: s.studentName,
+          rollNumber: s.rollNumber,
+          score: s.plagiarismScore || 0
         }))
         .sort((a, b) => b.score - a.score);
       
@@ -164,7 +164,7 @@ const TeacherAssignmentSubmissions = () => {
           students: highSimilarityStudents
         });
       }
-    });
+    }
     
     return clusters;
   };
