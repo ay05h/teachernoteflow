@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
-  Bell,
   BookOpen, 
   Calendar, 
   FileText, 
@@ -15,7 +14,6 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import ThemeToggle from './ThemeToggle';
 import { Button } from './ui/button';
-import NotificationPopover from './NotificationPopover';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -184,7 +182,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             </h1>
           </div>
           <div className="flex items-center space-x-2">
-            <NotificationPopover />
             <ThemeToggle />
           </div>
         </header>
