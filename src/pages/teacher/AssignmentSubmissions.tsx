@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -63,6 +64,33 @@ const TeacherAssignmentSubmissions = () => {
     submission.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     submission.rollNumber.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  
+  // Calculate statistics
+  const totalSubmissions = useMemo(() => submissions.length, [submissions]);
+  const gradedSubmissions = useMemo(() => submissions.filter(s => s.marks !== undefined).length, [submissions]);
+  const highPlagiarism = useMemo(() => submissions.filter(s => (s.plagiarismScore || 0) > 70).length, [submissions]);
+  
+  // Calculate plagiarism ranges for chart
+  const plagiarismRanges = useMemo(() => {
+    const ranges = {
+      '0-20%': 0,
+      '21-40%': 0,
+      '41-60%': 0,
+      '61-80%': 0,
+      '81-100%': 0
+    };
+    
+    submissions.forEach(submission => {
+      const score = submission.plagiarismScore || 0;
+      if (score <= 20) ranges['0-20%']++;
+      else if (score <= 40) ranges['21-40%']++;
+      else if (score <= 60) ranges['41-60%']++;
+      else if (score <= 80) ranges['61-80%']++;
+      else ranges['81-100%']++;
+    });
+    
+    return ranges;
+  }, [submissions]);
   
   const handleOpenDialog = (submissionId: string) => {
     const submission = submissions.find(s => s.id === submissionId);
