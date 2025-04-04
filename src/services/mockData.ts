@@ -1,3 +1,4 @@
+
 import { Assignment, Course, Notification, Submission } from '../types';
 
 // Initialize data from localStorage or use empty arrays
@@ -57,7 +58,7 @@ export const addNotification = (notification: Omit<Notification, "id" | "created
     ...notification,
     id: `n${Date.now()}`, // Generate unique ID using timestamp
     createdAt: new Date(),
-    isRead: false
+    isRead: notification.isRead !== undefined ? notification.isRead : false
   };
   
   mockNotifications = [...mockNotifications, newNotification];
@@ -77,11 +78,12 @@ export const addCourse = (course: Omit<Course, "id" | "teacherId" | "createdAt">
   mockCourses = [...mockCourses, newCourse];
   storeData('courses', mockCourses);
   
-  // Create notification for students
+  // Create notification for students - with isRead property
   addNotification({
     userId: 'student1', // This would normally loop through all students
     title: "New Course Added",
-    message: `A new course "${course.title}" has been added to your curriculum.`
+    message: `A new course "${course.title}" has been added to your curriculum.`,
+    isRead: false
   });
   
   return newCourse;
@@ -101,11 +103,12 @@ export const addAssignment = (assignment: Omit<Assignment, "id" | "createdAt">):
   // Find the course to include in the notification
   const course = mockCourses.find(c => c.id === assignment.courseId);
   
-  // Create notification for students
+  // Create notification for students - with isRead property
   addNotification({
     userId: 'student1', // This would normally loop through all students enrolled in the course
     title: "New Assignment",
-    message: `A new assignment "${assignment.title}" has been added to ${course ? course.title : 'your course'}.`
+    message: `A new assignment "${assignment.title}" has been added to ${course ? course.title : 'your course'}.`,
+    isRead: false
   });
   
   return newAssignment;
@@ -186,12 +189,13 @@ export const addSubmission = (submission: Omit<Submission, "id" | "submittedAt" 
     const assignment = mockAssignments.find(a => a.id === submission.assignmentId);
     const course = assignment ? mockCourses.find(c => c.id === assignment.courseId) : undefined;
     
-    // Create notification for teacher
+    // Create notification for teacher - with isRead property
     if (assignment && course) {
       addNotification({
         userId: course.teacherId,
         title: "Assignment Submitted",
-        message: `${submission.studentName} has submitted the assignment "${assignment.title}" for ${course.title}.`
+        message: `${submission.studentName} has submitted the assignment "${assignment.title}" for ${course.title}.`,
+        isRead: false
       });
     }
     
@@ -240,7 +244,8 @@ export const updateSubmission = (submissionId: string, updates: Partial<Submissi
           addNotification({
             userId: submission.studentId,
             title: "Assignment Graded",
-            message: `Your assignment "${assignment.title}" has been graded. You received ${updates.marks} out of ${assignment.totalMarks} marks.`
+            message: `Your assignment "${assignment.title}" has been graded. You received ${updates.marks} out of ${assignment.totalMarks} marks.`,
+            isRead: false
           });
         }
       }
