@@ -129,18 +129,6 @@ const TeacherAssignmentSubmissions = () => {
     }
   };
   
-  const totalSubmissions = submissions.length;
-  const gradedSubmissions = submissions.filter(s => s.marks !== undefined).length;
-  const highPlagiarism = submissions.filter(s => (s.plagiarismScore || 0) > 50).length;
-
-  const plagiarismRanges = {
-    '0-20%': submissions.filter(s => (s.plagiarismScore || 0) <= 20).length,
-    '21-40%': submissions.filter(s => (s.plagiarismScore || 0) > 20 && (s.plagiarismScore || 0) <= 40).length,
-    '41-60%': submissions.filter(s => (s.plagiarismScore || 0) > 40 && (s.plagiarismScore || 0) <= 60).length,
-    '61-80%': submissions.filter(s => (s.plagiarismScore || 0) > 60 && (s.plagiarismScore || 0) <= 80).length,
-    '81-100%': submissions.filter(s => (s.plagiarismScore || 0) > 80).length,
-  };
-
   const calculateSimilarity = (text1: string = '', text2: string = ''): number => {
     if (!text1 || !text2) return 0;
     
@@ -158,80 +146,81 @@ const TeacherAssignmentSubmissions = () => {
 
   const getSimilarityClusters = () => {
     const submissionsWithContent = submissions.filter(s => s.fileContent);
-    if (submissionsWithContent.length < 2) return [];
+    if (submissionsWithContent.length === 0) return [];
     
-    const clusters: {
-      similarityThreshold: number,
-      submissions: {
-        id: string,
-        name: string,
-        rollNumber: string,
-        content: string,
-        similarityScores: {
-          comparedToId: string,
-          comparedToName: string,
-          score: number
-        }[]
-      }[]
+    const similarityMatrix: {
+      sub1Id: string,
+      sub1Name: string, 
+      sub1RollNumber: string,
+      sub2Id: string,
+      sub2Name: string,
+      sub2RollNumber: string,
+      similarity: number
     }[] = [];
     
     for (let i = 0; i < submissionsWithContent.length; i++) {
-      const sub1 = submissionsWithContent[i];
-      
-      const similarSubmissions = [];
-      const similarityScores = [];
-      
-      for (let j = 0; j < submissionsWithContent.length; j++) {
-        if (i === j) continue;
-        
+      for (let j = i + 1; j < submissionsWithContent.length; j++) {
+        const sub1 = submissionsWithContent[i];
         const sub2 = submissionsWithContent[j];
+        
         const similarity = calculateSimilarity(sub1.fileContent, sub2.fileContent);
         
         if (similarity >= 70) {
-          similarityScores.push({
-            comparedToId: sub2.id,
-            comparedToName: sub2.studentName,
-            score: similarity
+          similarityMatrix.push({
+            sub1Id: sub1.id,
+            sub1Name: sub1.studentName,
+            sub1RollNumber: sub1.rollNumber,
+            sub2Id: sub2.id,
+            sub2Name: sub2.studentName,
+            sub2RollNumber: sub2.rollNumber,
+            similarity: similarity
           });
-        }
-      }
-      
-      if (similarityScores.length > 0) {
-        similarSubmissions.push({
-          id: sub1.id,
-          name: sub1.studentName,
-          rollNumber: sub1.rollNumber,
-          content: sub1.fileContent || '',
-          similarityScores: similarityScores
-        });
-      }
-      
-      if (similarSubmissions.length > 0) {
-        const thresholds = [90, 80, 70];
-        
-        for (const threshold of thresholds) {
-          const submissionsAboveThreshold = similarSubmissions.filter(s => 
-            s.similarityScores.some(score => score.score >= threshold)
-          );
-          
-          if (submissionsAboveThreshold.length > 0) {
-            const clusterExists = clusters.some(c => 
-              c.similarityThreshold === threshold && 
-              c.submissions.some(s => s.id === submissionsAboveThreshold[0].id)
-            );
-            
-            if (!clusterExists) {
-              clusters.push({
-                similarityThreshold: threshold,
-                submissions: submissionsAboveThreshold
-              });
-            }
-          }
         }
       }
     }
     
-    return clusters.sort((a, b) => b.similarityThreshold - a.similarityThreshold);
+    const thresholds = [90, 80, 70];
+    const clusters: {
+      threshold: number;
+      pairs: {
+        sub1: { 
+          id: string; 
+          name: string; 
+          rollNumber: string 
+        },
+        sub2: { 
+          id: string; 
+          name: string; 
+          rollNumber: string 
+        },
+        similarity: number;
+      }[];
+    }[] = [];
+    
+    for (const threshold of thresholds) {
+      const thresholdPairs = similarityMatrix.filter(pair => pair.similarity >= threshold);
+      
+      if (thresholdPairs.length > 0) {
+        clusters.push({
+          threshold,
+          pairs: thresholdPairs.map(pair => ({
+            sub1: { 
+              id: pair.sub1Id, 
+              name: pair.sub1Name, 
+              rollNumber: pair.sub1RollNumber 
+            },
+            sub2: { 
+              id: pair.sub2Id, 
+              name: pair.sub2Name, 
+              rollNumber: pair.sub2RollNumber 
+            },
+            similarity: pair.similarity
+          }))
+        });
+      }
+    }
+    
+    return clusters;
   };
 
   const similarityClusters = getSimilarityClusters();
@@ -271,10 +260,10 @@ const TeacherAssignmentSubmissions = () => {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Assignments
         </Button>
-        <h2 className="text-3xl font-bold tracking-tight">{assignment.title}</h2>
+        <h2 className="text-3xl font-bold tracking-tight">{assignment?.title}</h2>
         <p className="text-muted-foreground">
-          Due: {format(new Date(assignment.dueDate), 'MMMM dd, yyyy')} | 
-          Total Marks: {assignment.totalMarks}
+          Due: {assignment ? format(new Date(assignment.dueDate), 'MMMM dd, yyyy') : ''} | 
+          Total Marks: {assignment?.totalMarks}
         </p>
       </div>
       
@@ -352,41 +341,31 @@ const TeacherAssignmentSubmissions = () => {
                   {similarityClusters.map((cluster, index) => (
                     <div key={index} className="rounded-lg border p-4">
                       <h3 className="text-lg font-medium mb-2">
-                        Similarity Cluster {index + 1} - {cluster.similarityThreshold}%+ similarity
+                        Similarity Group {index + 1} - {cluster.threshold}%+ Similarity
                       </h3>
                       <div className="overflow-x-auto">
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Student</TableHead>
+                              <TableHead>Student 1</TableHead>
                               <TableHead>Roll Number</TableHead>
-                              <TableHead>Similar To</TableHead>
+                              <TableHead>Student 2</TableHead>
+                              <TableHead>Roll Number</TableHead>
                               <TableHead>Similarity Score</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {cluster.submissions.map((submission, idx) => (
-                              <TableRow key={`${index}-${idx}`}>
-                                <TableCell className="font-medium">{submission.name}</TableCell>
-                                <TableCell>{submission.rollNumber}</TableCell>
+                            {cluster.pairs.map((pair, pairIdx) => (
+                              <TableRow key={`${index}-${pairIdx}`}>
+                                <TableCell className="font-medium">{pair.sub1.name}</TableCell>
+                                <TableCell>{pair.sub1.rollNumber}</TableCell>
+                                <TableCell className="font-medium">{pair.sub2.name}</TableCell>
+                                <TableCell>{pair.sub2.rollNumber}</TableCell>
                                 <TableCell>
-                                  <ul className="space-y-1 list-disc list-inside">
-                                    {submission.similarityScores.map((score, scoreIdx) => (
-                                      <li key={`${index}-${idx}-${scoreIdx}`} className="text-sm">
-                                        {score.comparedToName}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </TableCell>
-                                <TableCell>
-                                  <ul className="space-y-1 list-disc list-inside">
-                                    {submission.similarityScores.map((score, scoreIdx) => (
-                                      <li key={`${index}-${idx}-${scoreIdx}`} className="flex items-center gap-2">
-                                        <PlagiarismMeter score={score.score} size="sm" showLabel={false} />
-                                        <span className="text-sm font-medium">{score.score}%</span>
-                                      </li>
-                                    ))}
-                                  </ul>
+                                  <div className="flex items-center gap-2">
+                                    <PlagiarismMeter score={pair.similarity} size="md" />
+                                    <span className="font-bold">{pair.similarity}%</span>
+                                  </div>
                                 </TableCell>
                               </TableRow>
                             ))}
