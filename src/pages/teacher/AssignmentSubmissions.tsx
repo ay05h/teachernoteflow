@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
@@ -207,48 +206,7 @@ const TeacherAssignmentSubmissions = () => {
       }
     }
     
-    const thresholds = [90, 80, 70];
-    const clusters: {
-      threshold: number;
-      pairs: {
-        sub1: { 
-          id: string; 
-          name: string; 
-          rollNumber: string 
-        },
-        sub2: { 
-          id: string; 
-          name: string; 
-          rollNumber: string 
-        },
-        similarity: number;
-      }[];
-    }[] = [];
-    
-    for (const threshold of thresholds) {
-      const thresholdPairs = similarityMatrix.filter(pair => pair.similarity >= threshold);
-      
-      if (thresholdPairs.length > 0) {
-        clusters.push({
-          threshold,
-          pairs: thresholdPairs.map(pair => ({
-            sub1: { 
-              id: pair.sub1Id, 
-              name: pair.sub1Name, 
-              rollNumber: pair.sub1RollNumber 
-            },
-            sub2: { 
-              id: pair.sub2Id, 
-              name: pair.sub2Name, 
-              rollNumber: pair.sub2RollNumber 
-            },
-            similarity: pair.similarity
-          }))
-        });
-      }
-    }
-    
-    return clusters;
+    return similarityMatrix.sort((a, b) => b.similarity - a.similarity);
   };
 
   const similarityClusters = getSimilarityClusters();
@@ -365,43 +323,39 @@ const TeacherAssignmentSubmissions = () => {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  {similarityClusters.map((cluster, index) => (
-                    <div key={index} className="rounded-lg border p-4">
-                      <h3 className="text-lg font-medium mb-2">
-                        Similarity Group {index + 1} - {cluster.threshold}%+ Similarity
-                      </h3>
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Student 1</TableHead>
-                              <TableHead>Roll Number</TableHead>
-                              <TableHead>Student 2</TableHead>
-                              <TableHead>Roll Number</TableHead>
-                              <TableHead>Similarity Score</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {cluster.pairs.map((pair, pairIdx) => (
-                              <TableRow key={`${index}-${pairIdx}`}>
-                                <TableCell className="font-medium">{pair.sub1.name}</TableCell>
-                                <TableCell>{pair.sub1.rollNumber}</TableCell>
-                                <TableCell className="font-medium">{pair.sub2.name}</TableCell>
-                                <TableCell>{pair.sub2.rollNumber}</TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    <PlagiarismMeter score={pair.similarity} size="md" />
-                                    <span className="font-bold">{pair.similarity}%</span>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </div>
-                  ))}
+                <div>
+                  <h3 className="text-lg font-medium mb-4">
+                    Submissions with 70%+ Similarity
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Student 1</TableHead>
+                          <TableHead>Roll Number</TableHead>
+                          <TableHead>Student 2</TableHead>
+                          <TableHead>Roll Number</TableHead>
+                          <TableHead>Similarity Score</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {similarityClusters.map((pair, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="font-medium">{pair.sub1Name}</TableCell>
+                            <TableCell>{pair.sub1RollNumber}</TableCell>
+                            <TableCell className="font-medium">{pair.sub2Name}</TableCell>
+                            <TableCell>{pair.sub2RollNumber}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <PlagiarismMeter score={pair.similarity} size="md" />
+                                <span className="font-bold">{pair.similarity}%</span>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               )}
             </CardContent>
