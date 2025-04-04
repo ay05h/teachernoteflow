@@ -1,5 +1,4 @@
-
-import { Assignment, Course, Submission } from '../types';
+import { Assignment, Course, Notification, Submission } from '../types';
 
 // Initialize data from localStorage or use empty arrays
 const getInitialData = <T>(key: string): T[] => {
@@ -27,6 +26,11 @@ const getInitialData = <T>(key: string): T[] => {
         ...item,
         createdAt: new Date(item.createdAt)
       }));
+    } else if (key === 'notifications') {
+      return parsedData.map((item: any) => ({
+        ...item,
+        createdAt: new Date(item.createdAt)
+      }));
     }
     
     return parsedData;
@@ -41,12 +45,27 @@ const storeData = <T>(key: string, data: T[]): void => {
   localStorage.setItem(key, JSON.stringify(data));
 };
 
-// Initialize empty arrays for courses, assignments, and submissions
+// Initialize empty arrays for courses, assignments, submissions, and notifications
 export let mockCourses: Course[] = getInitialData<Course>('courses');
 export let mockAssignments: Assignment[] = getInitialData<Assignment>('assignments');
 export let mockSubmissions: Submission[] = getInitialData<Submission>('submissions');
+export let mockNotifications: Notification[] = getInitialData<Notification>('notifications');
 
-// Function to add a new course
+// Function to add a new notification
+export const addNotification = (notification: Omit<Notification, "id" | "createdAt">): Notification => {
+  const newNotification: Notification = {
+    ...notification,
+    id: `n${Date.now()}`, // Generate unique ID using timestamp
+    createdAt: new Date(),
+    isRead: false
+  };
+  
+  mockNotifications = [...mockNotifications, newNotification];
+  storeData('notifications', mockNotifications);
+  return newNotification;
+};
+
+// Function to add a new course with notification
 export const addCourse = (course: Omit<Course, "id" | "teacherId" | "createdAt">): Course => {
   const newCourse: Course = {
     ...course,
@@ -57,10 +76,18 @@ export const addCourse = (course: Omit<Course, "id" | "teacherId" | "createdAt">
   
   mockCourses = [...mockCourses, newCourse];
   storeData('courses', mockCourses);
+  
+  // Create notification for students
+  addNotification({
+    userId: 'student1', // This would normally loop through all students
+    title: "New Course Added",
+    message: `A new course "${course.title}" has been added to your curriculum.`
+  });
+  
   return newCourse;
 };
 
-// Function to add a new assignment
+// Function to add a new assignment with notification
 export const addAssignment = (assignment: Omit<Assignment, "id" | "createdAt">): Assignment => {
   const newAssignment: Assignment = {
     ...assignment,
@@ -70,6 +97,17 @@ export const addAssignment = (assignment: Omit<Assignment, "id" | "createdAt">):
   
   mockAssignments = [...mockAssignments, newAssignment];
   storeData('assignments', mockAssignments);
+  
+  // Find the course to include in the notification
+  const course = mockCourses.find(c => c.id === assignment.courseId);
+  
+  // Create notification for students
+  addNotification({
+    userId: 'student1', // This would normally loop through all students enrolled in the course
+    title: "New Assignment",
+    message: `A new assignment "${assignment.title}" has been added to ${course ? course.title : 'your course'}.`
+  });
+  
   return newAssignment;
 };
 
@@ -124,7 +162,7 @@ const detectPlagiarism = (text: string, assignmentId: string, studentId: string)
   return Math.round(maxSimilarity);
 };
 
-// Function to add a new submission
+// Function to add a new submission with notification
 export const addSubmission = (submission: Omit<Submission, "id" | "submittedAt" | "plagiarismScore" | "fileContent"> & { fileContent: string }): Submission => {
   try {
     // Calculate plagiarism score based on text similarity
@@ -143,6 +181,20 @@ export const addSubmission = (submission: Omit<Submission, "id" | "submittedAt" 
     
     mockSubmissions = [...mockSubmissions, newSubmission];
     storeData('submissions', mockSubmissions);
+    
+    // Find the assignment to include in the notification
+    const assignment = mockAssignments.find(a => a.id === submission.assignmentId);
+    const course = assignment ? mockCourses.find(c => c.id === assignment.courseId) : undefined;
+    
+    // Create notification for teacher
+    if (assignment && course) {
+      addNotification({
+        userId: course.teacherId,
+        title: "Assignment Submitted",
+        message: `${submission.studentName} has submitted the assignment "${assignment.title}" for ${course.title}.`
+      });
+    }
+    
     return newSubmission;
   } catch (error) {
     console.error("Error adding submission:", error);
@@ -160,7 +212,7 @@ export const getSubmissionById = (submissionId: string): Submission | undefined 
   return mockSubmissions.find(submission => submission.id === submissionId);
 };
 
-// Function to update a submission (for grading)
+// Function to update a submission (for grading) with notification
 export const updateSubmission = (submissionId: string, updates: Partial<Submission>): Submission | undefined => {
   try {
     const index = mockSubmissions.findIndex(submission => submission.id === submissionId);
@@ -178,6 +230,20 @@ export const updateSubmission = (submissionId: string, updates: Partial<Submissi
       
       // Store in localStorage
       storeData('submissions', mockSubmissions);
+      
+      // If the submission was graded, create a notification for the student
+      if (updates.marks !== undefined) {
+        const submission = mockSubmissions[index];
+        const assignment = mockAssignments.find(a => a.id === submission.assignmentId);
+        
+        if (assignment) {
+          addNotification({
+            userId: submission.studentId,
+            title: "Assignment Graded",
+            message: `Your assignment "${assignment.title}" has been graded. You received ${updates.marks} out of ${assignment.totalMarks} marks.`
+          });
+        }
+      }
       
       return mockSubmissions[index];
     }
