@@ -12,7 +12,7 @@ import { Notification } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-// Mock function to get notifications - in a real app, this would come from an API
+// Function to get notifications for a specific user
 const getMockNotifications = (userId: string): Notification[] => {
   const storedNotifications = localStorage.getItem('notifications');
   if (!storedNotifications) return [];
@@ -30,7 +30,7 @@ const getMockNotifications = (userId: string): Notification[] => {
   }
 };
 
-// Mock function to mark a notification as read
+// Function to mark a notification as read
 const markNotificationAsRead = (notificationId: string): void => {
   const storedNotifications = localStorage.getItem('notifications');
   if (!storedNotifications) return;
@@ -49,7 +49,7 @@ const markNotificationAsRead = (notificationId: string): void => {
   }
 };
 
-// Mock function to mark all notifications as read
+// Function to mark all notifications as read
 const markAllNotificationsAsRead = (userId: string): void => {
   const storedNotifications = localStorage.getItem('notifications');
   if (!storedNotifications) return;
@@ -83,6 +83,24 @@ const NotificationPopover = () => {
       setNotifications(getMockNotifications(user.id));
     }
   }, [user?.id]);
+
+  // Set up a periodic refresh of notifications
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (user?.id) {
+        setNotifications(getMockNotifications(user.id));
+      }
+    }, 5000); // Check every 5 seconds for new notifications
+    
+    return () => clearInterval(intervalId);
+  }, [user?.id]);
+
+  // Refresh notifications when the popover is opened
+  useEffect(() => {
+    if (isOpen && user?.id) {
+      setNotifications(getMockNotifications(user.id));
+    }
+  }, [isOpen, user?.id]);
 
   // Format date to readable format
   const formatDate = (dateString: Date) => {
