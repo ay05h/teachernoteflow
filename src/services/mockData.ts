@@ -1,5 +1,5 @@
 
-import { Assignment, Course, Submission } from '../types';
+import { Assignment, Course, Notification, Submission } from '../types';
 
 // Initialize data from localStorage or use empty arrays
 const getInitialData = <T>(key: string): T[] => {
@@ -27,6 +27,11 @@ const getInitialData = <T>(key: string): T[] => {
         ...item,
         createdAt: new Date(item.createdAt)
       }));
+    } else if (key === 'notifications') {
+      return parsedData.map((item: any) => ({
+        ...item,
+        createdAt: new Date(item.createdAt)
+      }));
     }
     
     return parsedData;
@@ -45,6 +50,54 @@ const storeData = <T>(key: string, data: T[]): void => {
 export let mockCourses: Course[] = getInitialData<Course>('courses');
 export let mockAssignments: Assignment[] = getInitialData<Assignment>('assignments');
 export let mockSubmissions: Submission[] = getInitialData<Submission>('submissions');
+export let mockNotifications: Notification[] = getInitialData<Notification>('notifications');
+
+// Function to add a new notification
+export const addNotification = (notification: Omit<Notification, "id" | "createdAt" | "isRead"> & { isRead?: boolean }): Notification => {
+  const newNotification: Notification = {
+    ...notification,
+    id: `n${Date.now()}`, // Generate unique ID using timestamp
+    isRead: notification.isRead !== undefined ? notification.isRead : false,
+    createdAt: new Date()
+  };
+  
+  mockNotifications = [...mockNotifications, newNotification];
+  storeData('notifications', mockNotifications);
+  return newNotification;
+};
+
+// Function to get notifications for a user
+export const getNotificationsForUser = (userId: string): Notification[] => {
+  return mockNotifications.filter(notification => notification.userId === userId);
+};
+
+// Function to mark a notification as read
+export const markNotificationAsRead = (notificationId: string): Notification | undefined => {
+  const index = mockNotifications.findIndex(notification => notification.id === notificationId);
+  
+  if (index !== -1) {
+    mockNotifications[index] = {
+      ...mockNotifications[index],
+      isRead: true
+    };
+    
+    storeData('notifications', mockNotifications);
+    return mockNotifications[index];
+  }
+  
+  return undefined;
+};
+
+// Function to mark all notifications as read for a user
+export const markAllNotificationsAsRead = (userId: string): void => {
+  mockNotifications = mockNotifications.map(notification => 
+    notification.userId === userId 
+      ? { ...notification, isRead: true } 
+      : notification
+  );
+  
+  storeData('notifications', mockNotifications);
+};
 
 // Function to add a new course
 export const addCourse = (course: Omit<Course, "id" | "teacherId" | "createdAt">): Course => {
@@ -57,6 +110,15 @@ export const addCourse = (course: Omit<Course, "id" | "teacherId" | "createdAt">
   
   mockCourses = [...mockCourses, newCourse];
   storeData('courses', mockCourses);
+  
+  // Add notification for all students
+  addNotification({
+    userId: 'student1', // In a real app, you would send to all students
+    title: "New Course Available",
+    message: `A new course "${course.title}" has been added.`,
+    isRead: false
+  });
+  
   return newCourse;
 };
 
@@ -70,6 +132,19 @@ export const addAssignment = (assignment: Omit<Assignment, "id" | "createdAt">):
   
   mockAssignments = [...mockAssignments, newAssignment];
   storeData('assignments', mockAssignments);
+  
+  // Get the course name for the notification
+  const course = mockCourses.find(c => c.id === assignment.courseId);
+  const courseTitle = course ? course.title : "a course";
+  
+  // Add notification for all students
+  addNotification({
+    userId: 'student1', // In a real app, you would send to all enrolled students
+    title: "New Assignment",
+    message: `A new assignment "${assignment.title}" has been added to ${courseTitle}.`,
+    isRead: false
+  });
+  
   return newAssignment;
 };
 
@@ -143,6 +218,19 @@ export const addSubmission = (submission: Omit<Submission, "id" | "submittedAt" 
     
     mockSubmissions = [...mockSubmissions, newSubmission];
     storeData('submissions', mockSubmissions);
+    
+    // Get the assignment details for the notification
+    const assignment = mockAssignments.find(a => a.id === submission.assignmentId);
+    const assignmentTitle = assignment ? assignment.title : "an assignment";
+    
+    // Add notification for the teacher
+    addNotification({
+      userId: 'teacher1', // In a real app, get the actual teacher ID
+      title: "New Submission",
+      message: `${submission.studentName} has submitted "${assignmentTitle}".`,
+      isRead: false
+    });
+    
     return newSubmission;
   } catch (error) {
     console.error("Error adding submission:", error);

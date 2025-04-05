@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ThemeToggle from './ThemeToggle';
+import NotificationPopover from './NotificationPopover';
 import { Button } from './ui/button';
 
 interface DashboardLayoutProps {
@@ -182,6 +183,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             </h1>
           </div>
           <div className="flex items-center space-x-2">
+            <NotificationPopover />
             <ThemeToggle />
           </div>
         </header>
