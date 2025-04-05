@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -64,6 +63,33 @@ const TeacherAssignmentSubmissions = () => {
     submission.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     submission.rollNumber.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  
+  // Calculate statistics
+  const totalSubmissions = useMemo(() => submissions.length, [submissions]);
+  const gradedSubmissions = useMemo(() => submissions.filter(s => s.marks !== undefined).length, [submissions]);
+  const highPlagiarism = useMemo(() => submissions.filter(s => (s.plagiarismScore || 0) > 70).length, [submissions]);
+  
+  // Calculate plagiarism ranges for chart
+  const plagiarismRanges = useMemo(() => {
+    const ranges = {
+      '0-20%': 0,
+      '21-40%': 0,
+      '41-60%': 0,
+      '61-80%': 0,
+      '81-100%': 0
+    };
+    
+    submissions.forEach(submission => {
+      const score = submission.plagiarismScore || 0;
+      if (score <= 20) ranges['0-20%']++;
+      else if (score <= 40) ranges['21-40%']++;
+      else if (score <= 60) ranges['41-60%']++;
+      else if (score <= 80) ranges['61-80%']++;
+      else ranges['81-100%']++;
+    });
+    
+    return ranges;
+  }, [submissions]);
   
   const handleOpenDialog = (submissionId: string) => {
     const submission = submissions.find(s => s.id === submissionId);
@@ -130,46 +156,60 @@ const TeacherAssignmentSubmissions = () => {
     }
   };
   
-  const totalSubmissions = submissions.length;
-  const gradedSubmissions = submissions.filter(s => s.marks !== undefined).length;
-  const highPlagiarism = submissions.filter(s => (s.plagiarismScore || 0) > 50).length;
-
-  const plagiarismRanges = {
-    '0-20%': submissions.filter(s => (s.plagiarismScore || 0) <= 20).length,
-    '21-40%': submissions.filter(s => (s.plagiarismScore || 0) > 20 && (s.plagiarismScore || 0) <= 40).length,
-    '41-60%': submissions.filter(s => (s.plagiarismScore || 0) > 40 && (s.plagiarismScore || 0) <= 60).length,
-    '61-80%': submissions.filter(s => (s.plagiarismScore || 0) > 60 && (s.plagiarismScore || 0) <= 80).length,
-    '81-100%': submissions.filter(s => (s.plagiarismScore || 0) > 80).length,
+  const calculateSimilarity = (text1: string = '', text2: string = ''): number => {
+    if (!text1 || !text2) return 0;
+    
+    const words1 = text1.toLowerCase().split(/\s+/);
+    const words2 = text2.toLowerCase().split(/\s+/);
+    
+    const set1 = new Set(words1);
+    const set2 = new Set(words2);
+    
+    const intersection = new Set([...set1].filter(x => set2.has(x)));
+    const union = new Set([...set1, ...set2]);
+    
+    return union.size === 0 ? 0 : Math.round((intersection.size / union.size) * 100);
   };
 
-  // Function to get plagiarism clusters
-  const getPlagiarismClusters = () => {
-    if (!submissions.length) return [];
+  const getSimilarityClusters = () => {
+    const submissionsWithContent = submissions.filter(s => s.fileContent);
+    if (submissionsWithContent.length === 0) return [];
     
-    let clusters: { threshold: number, students: { name: string, score: number }[] }[] = [];
+    const similarityMatrix: {
+      sub1Id: string,
+      sub1Name: string, 
+      sub1RollNumber: string,
+      sub2Id: string,
+      sub2Name: string,
+      sub2RollNumber: string,
+      similarity: number
+    }[] = [];
     
-    // Thresholds for similarity (70%, 80%, 90%)
-    const thresholds = [70, 80, 90];
-    
-    thresholds.forEach(threshold => {
-      // Find all students with plagiarism score >= threshold
-      const highSimilarityStudents = submissions
-        .filter(s => (s.plagiarismScore || 0) >= threshold)
-        .map(s => ({ name: s.studentName, score: s.plagiarismScore || 0 }))
-        .sort((a, b) => b.score - a.score); // Sort descending by score
-      
-      if (highSimilarityStudents.length >= 2) { // Only include clusters with at least 2 students
-        clusters.push({
-          threshold,
-          students: highSimilarityStudents
-        });
+    for (let i = 0; i < submissionsWithContent.length; i++) {
+      for (let j = i + 1; j < submissionsWithContent.length; j++) {
+        const sub1 = submissionsWithContent[i];
+        const sub2 = submissionsWithContent[j];
+        
+        const similarity = calculateSimilarity(sub1.fileContent, sub2.fileContent);
+        
+        if (similarity >= 70) {
+          similarityMatrix.push({
+            sub1Id: sub1.id,
+            sub1Name: sub1.studentName,
+            sub1RollNumber: sub1.rollNumber,
+            sub2Id: sub2.id,
+            sub2Name: sub2.studentName,
+            sub2RollNumber: sub2.rollNumber,
+            similarity: similarity
+          });
+        }
       }
-    });
+    }
     
-    return clusters;
+    return similarityMatrix.sort((a, b) => b.similarity - a.similarity);
   };
-  
-  const plagiarismClusters = getPlagiarismClusters();
+
+  const similarityClusters = getSimilarityClusters();
 
   if (!assignment) {
     return (
@@ -206,10 +246,10 @@ const TeacherAssignmentSubmissions = () => {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Assignments
         </Button>
-        <h2 className="text-3xl font-bold tracking-tight">{assignment.title}</h2>
+        <h2 className="text-3xl font-bold tracking-tight">{assignment?.title}</h2>
         <p className="text-muted-foreground">
-          Due: {format(new Date(assignment.dueDate), 'MMMM dd, yyyy')} | 
-          Total Marks: {assignment.totalMarks}
+          Due: {assignment ? format(new Date(assignment.dueDate), 'MMMM dd, yyyy') : ''} | 
+          Total Marks: {assignment?.totalMarks}
         </p>
       </div>
       
@@ -268,7 +308,6 @@ const TeacherAssignmentSubmissions = () => {
             </CardContent>
           </Card>
           
-          {/* New Plagiarism Clusters Section */}
           <Card className="mt-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -277,42 +316,46 @@ const TeacherAssignmentSubmissions = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {plagiarismClusters.length === 0 ? (
+              {similarityClusters.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8">
                   <p className="text-center text-muted-foreground">
                     No significant similarity clusters found among student submissions.
                   </p>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  {plagiarismClusters.map((cluster, index) => (
-                    <div key={index} className="rounded-lg border p-4">
-                      <h3 className="text-lg font-medium mb-2">Students with {cluster.threshold}%+ similarity</h3>
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Student Name</TableHead>
-                              <TableHead>Similarity Score</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {cluster.students.map((student, idx) => (
-                              <TableRow key={idx}>
-                                <TableCell className="font-medium">{student.name}</TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    <PlagiarismMeter score={student.score} />
-                                    <span>{student.score}%</span>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </div>
-                  ))}
+                <div>
+                  <h3 className="text-lg font-medium mb-4">
+                    Submissions with 70%+ Similarity
+                  </h3>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Student 1</TableHead>
+                          <TableHead>Roll Number</TableHead>
+                          <TableHead>Student 2</TableHead>
+                          <TableHead>Roll Number</TableHead>
+                          <TableHead>Similarity Score</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {similarityClusters.map((pair, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="font-medium">{pair.sub1Name}</TableCell>
+                            <TableCell>{pair.sub1RollNumber}</TableCell>
+                            <TableCell className="font-medium">{pair.sub2Name}</TableCell>
+                            <TableCell>{pair.sub2RollNumber}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <PlagiarismMeter score={pair.similarity} size="md" />
+                                <span className="font-bold">{pair.similarity}%</span>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               )}
             </CardContent>
