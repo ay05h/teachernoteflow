@@ -3,7 +3,15 @@ import { addNotification, mockNotifications } from './mockData';
 
 // Initialize sample notifications if there are none
 export const initializeNotifications = () => {
+  console.log("Initializing notifications. Current count:", mockNotifications.length);
+  
+  // Clear existing notifications for testing purposes
+  // Comment this out in production
+  // localStorage.removeItem('notifications');
+  
   if (mockNotifications.length === 0) {
+    console.log("Adding sample notifications");
+    
     // Create sample notifications for student
     addNotification({
       userId: 'student1',
@@ -33,5 +41,7 @@ export const initializeNotifications = () => {
       message: 'One of your assignments is due in the next 48 hours.',
       isRead: false
     });
+  } else {
+    console.log("Notifications already exist, skipping initialization");
   }
 };

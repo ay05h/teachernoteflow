@@ -61,6 +61,9 @@ export const addNotification = (notification: Omit<Notification, "id" | "created
     createdAt: new Date()
   };
   
+  // Log for debugging
+  console.log('Adding notification:', newNotification);
+  
   mockNotifications = [...mockNotifications, newNotification];
   storeData('notifications', mockNotifications);
   return newNotification;
@@ -68,7 +71,9 @@ export const addNotification = (notification: Omit<Notification, "id" | "created
 
 // Function to get notifications for a user
 export const getNotificationsForUser = (userId: string): Notification[] => {
-  return mockNotifications.filter(notification => notification.userId === userId);
+  const result = mockNotifications.filter(notification => notification.userId === userId);
+  console.log(`Getting notifications for user ${userId}:`, result);
+  return result;
 };
 
 // Function to mark a notification as read

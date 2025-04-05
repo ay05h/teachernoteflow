@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Bell } from 'lucide-react';
 import { 
@@ -14,6 +15,7 @@ import {
   markAllNotificationsAsRead
 } from '@/services/mockData';
 import { Notification } from '@/types';
+import { toast } from '@/hooks/use-toast';
 
 const NotificationPopover = () => {
   const { user } = useAuth();
@@ -22,7 +24,9 @@ const NotificationPopover = () => {
   
   const refreshNotifications = () => {
     if (user?.id) {
+      console.log('Refreshing notifications for user:', user.id);
       const userNotifications = getNotificationsForUser(user.id);
+      console.log('User notifications:', userNotifications);
       setNotifications(userNotifications);
     }
   };
@@ -31,8 +35,8 @@ const NotificationPopover = () => {
   useEffect(() => {
     refreshNotifications();
     
-    // Refresh notifications every 30 seconds
-    const intervalId = setInterval(refreshNotifications, 30000);
+    // Refresh notifications every 10 seconds
+    const intervalId = setInterval(refreshNotifications, 10000);
     
     return () => clearInterval(intervalId);
   }, [user?.id]);
@@ -55,6 +59,10 @@ const NotificationPopover = () => {
     if (user?.id) {
       markAllNotificationsAsRead(user.id);
       refreshNotifications();
+      toast({
+        title: "Notifications cleared",
+        description: "All notifications have been marked as read"
+      });
     }
   };
 

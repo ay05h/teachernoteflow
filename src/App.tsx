@@ -24,12 +24,21 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./contexts/AuthContext";
 import { useEffect } from "react";
 import { initializeNotifications } from "./services/initNotifications";
+import { Alert, AlertDescription } from "./components/ui/alert";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1
+    },
+  },
+});
 
 const AppContent = () => {
   useEffect(() => {
     // Initialize sample notifications when the app starts
+    console.log("App mounted, initializing notifications");
     initializeNotifications();
   }, []);
 
