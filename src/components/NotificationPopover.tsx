@@ -25,7 +25,12 @@ const NotificationPopover = () => {
   const refreshNotifications = () => {
     if (user?.id) {
       console.log('Refreshing notifications for user:', user.id);
-      const userNotifications = getNotificationsForUser(user.id);
+      
+      // Convert user ID to expected format
+      const userId = user.type === 'student' ? 'student1' : 'teacher1';
+      console.log('Mapped to standard user ID:', userId);
+      
+      const userNotifications = getNotificationsForUser(userId);
       console.log('User notifications:', userNotifications);
       setNotifications(userNotifications);
     }
@@ -35,8 +40,8 @@ const NotificationPopover = () => {
   useEffect(() => {
     refreshNotifications();
     
-    // Refresh notifications every 10 seconds
-    const intervalId = setInterval(refreshNotifications, 10000);
+    // Refresh notifications every 5 seconds
+    const intervalId = setInterval(refreshNotifications, 5000);
     
     return () => clearInterval(intervalId);
   }, [user?.id]);
@@ -57,7 +62,10 @@ const NotificationPopover = () => {
 
   const handleMarkAllAsRead = () => {
     if (user?.id) {
-      markAllNotificationsAsRead(user.id);
+      // Convert user ID to expected format
+      const userId = user.type === 'student' ? 'student1' : 'teacher1';
+      
+      markAllNotificationsAsRead(userId);
       refreshNotifications();
       toast({
         title: "Notifications cleared",

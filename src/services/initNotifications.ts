@@ -6,8 +6,8 @@ export const initializeNotifications = () => {
   console.log("Initializing notifications. Current count:", mockNotifications.length);
   
   // Clear existing notifications for testing purposes
-  // Comment this out in production
-  // localStorage.removeItem('notifications');
+  // In development, uncomment this line to reset notifications
+  localStorage.removeItem('notifications');
   
   if (mockNotifications.length === 0) {
     console.log("Adding sample notifications");

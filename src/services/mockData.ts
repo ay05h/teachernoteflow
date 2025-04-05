@@ -1,4 +1,3 @@
-
 import { Assignment, Course, Notification, Submission } from '../types';
 
 // Initialize data from localStorage or use empty arrays
